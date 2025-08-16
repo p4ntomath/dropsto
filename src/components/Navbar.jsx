@@ -15,8 +15,8 @@ function Navbar({ isMenuOpen, setIsMenuOpen }) {
           </div>
           
           <div className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-white/80 text-sm hover:text-white transition-colors">How To Use</a>
-            <button className="bg-white/20 text-white text-sm px-4 py-1 rounded-lg hover:bg-white/30 transition-colors">
+            <a href="#features" className="text-white/80 text-md hover:text-white transition-colors">How To Use</a>
+            <button className="bg-white/20 text-white text-md px-4 py-1 rounded-lg hover:bg-white/30 transition-colors">
               Sign In
             </button>
           </div>

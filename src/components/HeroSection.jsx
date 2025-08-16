@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 
 function HeroSection() {
+  const [pin, setPin] = useState('')
+
   const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
     visible: { 
@@ -37,6 +40,13 @@ function HeroSection() {
     }
   }
 
+  const handleRetrieveFiles = () => {
+    if (pin.trim()) {
+      console.log('Retrieving files with PIN:', pin)
+      // Add your file retrieval logic here
+    }
+  }
+
   return (
     <section className="relative overflow-hidden pt-16 pb-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -51,12 +61,37 @@ function HeroSection() {
             </span>
           </motion.h1>
           <motion.p 
-            className="text-lg md:text-lg text-white/80 mb-8 max-w-3xl mx-auto"
+            className="text-lg md:text-lg text-white/80 mb-12 max-w-3xl mx-auto"
             variants={fadeInUp}
           >
             The most secure and intuitive cloud storage platform. Access your files anywhere, 
             share instantly, and collaborate seamlessly.
           </motion.p>
+                  {/* PIN Input Section */}
+          <motion.div 
+            className="max-w-md mx-auto mb-8"
+            variants={fadeInUp}
+          >
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  placeholder="Enter PIN to retrieve files"
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-center text-lg"
+                />
+                <button
+                  onClick={handleRetrieveFiles}
+                  disabled={!pin.trim()}
+                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white py-3 rounded-lg text-lg hover:from-cyan-600 hover:to-blue-600 transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg"
+                >
+                  Retrieve Files
+                </button>
+              </div>
+            </div>
+          </motion.div>
+
           <motion.div 
             className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             variants={fadeInUp}

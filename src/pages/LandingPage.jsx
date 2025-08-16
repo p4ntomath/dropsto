@@ -13,6 +13,7 @@ function LandingPage() {
     if (!vantaEffect && vantaRef.current && window.VANTA) {
       setVantaEffect(
         window.VANTA.BIRDS({
+            el: vantaRef.current,
             mouseControls: true,
             touchControls: true,
             gyroControls: false,
