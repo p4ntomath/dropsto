@@ -8,95 +8,74 @@ function Homepage() {
   const [activeTab, setActiveTab] = useState('Recent')
   const [searchQuery, setSearchQuery] = useState('')
   const [bucketFilter, setBucketFilter] = useState('all') // 'all', 'owned', 'shared'
+  const [buckets, setBuckets] = useState([]) // Start with empty buckets array
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newBucket, setNewBucket] = useState({
+    name: '',
+    description: '',
+    color: 'from-blue-500 to-cyan-500',
+    preview: 'folder'
+  })
+
+  const colorOptions = [
+    { name: 'Blue', value: 'from-blue-500 to-cyan-500' },
+    { name: 'Purple', value: 'from-purple-500 to-pink-500' },
+    { name: 'Green', value: 'from-green-500 to-blue-500' },
+    { name: 'Orange', value: 'from-orange-500 to-red-500' },
+    { name: 'Indigo', value: 'from-indigo-500 to-purple-500' },
+    { name: 'Gray', value: 'from-gray-500 to-slate-600' }
+  ]
+
+  const iconOptions = [
+    { name: 'Folder', value: 'folder' },
+    { name: 'Document', value: 'document' },
+    { name: 'Image', value: 'image' },
+    { name: 'Video', value: 'video' },
+    { name: 'Briefcase', value: 'briefcase' },
+    { name: 'Database', value: 'database' }
+  ]
+
+  // Create new bucket function
+  const createBucket = () => {
+    if (newBucket.name.trim()) {
+      const bucket = {
+        id: Date.now(), // Simple ID generation
+        name: newBucket.name.trim(),
+        description: newBucket.description.trim() || 'No description provided',
+        type: 'bucket',
+        items: 0,
+        size: '0 KB',
+        preview: newBucket.preview,
+        collaborators: ['user'],
+        color: newBucket.color,
+        owner: 'me',
+        isOwned: true,
+        createdAt: new Date().toISOString()
+      }
+      
+      setBuckets(prev => [bucket, ...prev])
+      setShowCreateModal(false)
+      setNewBucket({
+        name: '',
+        description: '',
+        color: 'from-blue-500 to-cyan-500',
+        preview: 'folder'
+      })
+    }
+  }
+
+  // Delete bucket function
+  const deleteBucket = (bucketId) => {
+    setBuckets(prev => prev.filter(bucket => bucket.id !== bucketId))
+  }
 
   const sidebarItems = [
     { name: 'Home', icon: 'home', active: true },
-    { name: 'My buckets', icon: 'pot', count: 8 },
-    { name: 'Shared buckets', icon: 'share', count: 3 }
+    { name: 'My buckets', icon: 'pot', count: buckets.filter(b => b.isOwned).length },
+    { name: 'Shared buckets', icon: 'share', count: buckets.filter(b => !b.isOwned).length }
   ]
 
   const tabs = ['Recent', 'Favorites', 'Shared']
-
-  const buckets = [
-    {
-      id: 1,
-      name: 'Personal Documents',
-      type: 'bucket',
-      items: 24,
-      size: '4.2 MB',
-      preview: 'document',
-      collaborators: ['user'],
-      color: 'from-blue-500 to-cyan-500',
-      description: 'Important personal files and documents',
-      owner: 'me',
-      isOwned: true
-    },
-    {
-      id: 2,
-      name: 'Photo Collection',
-      type: 'bucket',
-      items: 18,
-      size: '8.9 MB',
-      preview: 'image',
-      collaborators: ['user', 'user', 'user'],
-      color: 'from-purple-500 to-pink-500',
-      description: 'Family photos and memories',
-      owner: 'me',
-      isOwned: true
-    },
-    {
-      id: 3,
-      name: 'Work Projects',
-      type: 'bucket',
-      items: 12,
-      size: '3.1 MB',
-      preview: 'briefcase',
-      collaborators: ['user', 'user'],
-      color: 'from-green-500 to-blue-500',
-      description: 'Professional work files and presentations',
-      owner: 'me',
-      isOwned: true
-    },
-    {
-      id: 4,
-      name: 'Team Collaboration',
-      type: 'bucket',
-      items: 6,
-      size: '1.8 MB',
-      preview: 'video',
-      collaborators: ['user', 'user', 'user'],
-      color: 'from-orange-500 to-red-500',
-      description: 'Shared team workspace for projects',
-      owner: 'John Smith',
-      isOwned: false
-    },
-    {
-      id: 5,
-      name: 'Design Assets',
-      type: 'bucket',
-      items: 8,
-      size: '520 KB',
-      preview: 'palette',
-      collaborators: ['user', 'user'],
-      color: 'from-indigo-500 to-purple-500',
-      description: 'Graphics, logos, and design resources',
-      owner: 'me',
-      isOwned: true
-    },
-    {
-      id: 6,
-      name: 'Client Files',
-      type: 'bucket',
-      items: 4,
-      size: '156 KB',
-      preview: 'database',
-      collaborators: ['user'],
-      color: 'from-gray-500 to-slate-600',
-      description: 'Shared client documents and assets',
-      owner: 'Sarah Wilson',
-      isOwned: false
-    }
-  ]
 
   // Filter buckets based on ownership
   const filteredBuckets = buckets.filter(bucket => {
@@ -106,7 +85,7 @@ function Homepage() {
   })
 
   const quickActions = [
-    { name: 'Create new bucket', icon: 'pot', action: () => {} },
+    { name: 'Create new bucket', icon: 'pot', action: () => setShowCreateModal(true) },
     { name: 'Upload files', icon: 'upload', action: () => {} },
     { name: 'Share bucket', icon: 'link', action: () => {} },
     { name: 'Import bucket', icon: 'folder', action: () => {} }
@@ -293,6 +272,7 @@ function Homepage() {
             {quickActions.map((action, index) => (
               <button
                 key={index}
+                onClick={action.action}
                 className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group"
               >
                 <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">{getIcon(action.icon, "w-8 h-8")}</span>
@@ -341,8 +321,11 @@ function Homepage() {
                 </button>
               </div>
               
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
-                <span>{getIcon('bucket', "w-5 h-5")}</span>
+              <button 
+                onClick={() => setShowCreateModal(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              >
+                <span>{getIcon('pot', "w-5 h-5")}</span>
                 <span>Create Bucket</span>
               </button>
             </div>
@@ -370,90 +353,228 @@ function Homepage() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Storage Usage</h3>
-                <p className="text-sm text-gray-600">18.7 MB used of 30 MB available</p>
+                <p className="text-sm text-gray-600">
+                  {buckets.reduce((total, bucket) => {
+                    const sizeNum = parseFloat(bucket.size.split(' ')[0]) || 0
+                    const unit = bucket.size.split(' ')[1]
+                    return total + (unit === 'MB' ? sizeNum : sizeNum / 1024)
+                  }, 0).toFixed(1)} MB used of 30 MB available
+                </p>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-blue-600">62%</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {Math.round((buckets.reduce((total, bucket) => {
+                    const sizeNum = parseFloat(bucket.size.split(' ')[0]) || 0
+                    const unit = bucket.size.split(' ')[1]
+                    return total + (unit === 'MB' ? sizeNum : sizeNum / 1024)
+                  }, 0) / 30) * 100)}%
+                </div>
                 <div className="w-32 h-2 bg-gray-200 rounded-full mt-1">
-                  <div className="w-20 h-2 bg-blue-500 rounded-full"></div>
+                  <div 
+                    className="h-2 bg-blue-500 rounded-full transition-all duration-300"
+                    style={{ 
+                      width: `${Math.min((buckets.reduce((total, bucket) => {
+                        const sizeNum = parseFloat(bucket.size.split(' ')[0]) || 0
+                        const unit = bucket.size.split(' ')[1]
+                        return total + (unit === 'MB' ? sizeNum : sizeNum / 1024)
+                      }, 0) / 30) * 100, 100)}%` 
+                    }}
+                  ></div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Buckets Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredBuckets.map((bucket) => (
-              <motion.div
-                key={bucket.id}
-                className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group relative"
-                whileHover={{ y: -2 }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: bucket.id * 0.1 }}
-              >
-                {/* Ownership indicator */}
-                <div className="absolute top-4 right-4 flex items-center space-x-1">
-                  {bucket.isOwned ? (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Owned
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Shared
-                    </span>
-                  )}
-                  <button className="text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                    ⋯
-                  </button>
-                </div>
-                
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`w-12 h-12 bg-gradient-to-r ${bucket.color} rounded-lg flex items-center justify-center text-white text-xl`}>
-                    {getIcon(bucket.preview, "w-6 h-6")}
-                  </div>
-                </div>
-                
-                <h3 className="font-semibold text-gray-900 mb-1">{bucket.name}</h3>
-                <p className="text-sm text-gray-500 mb-2 line-clamp-2">{bucket.description}</p>
-                
-                {/* Owner info for shared buckets */}
-                {!bucket.isOwned && (
-                  <p className="text-xs text-gray-400 mb-3">
-                    Owned by {bucket.owner}
-                  </p>
-                )}
-                
-                <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                  <span>{bucket.items} items</span>
-                  <span>{bucket.size}</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex -space-x-2">
-                    {bucket.collaborators.map((avatar, index) => (
-                      <div
-                        key={index}
-                        className="w-6 h-6 bg-gradient-to-r from-gray-400 to-gray-600 rounded-full border-2 border-white flex items-center justify-center text-xs"
-                      >
-                        {getIcon('users', "w-3 h-3")}
-                      </div>
-                    ))}
-                    {bucket.collaborators.length > 3 && (
-                      <div className="w-6 h-6 bg-gray-200 rounded-full border-2 border-white flex items-center justify-center text-xs text-gray-600 font-medium">
-                        +{bucket.collaborators.length - 3}
-                      </div>
+          {/* Empty State or Buckets Grid */}
+          {filteredBuckets.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                {getIcon('pot', "w-12 h-12 text-gray-400")}
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {bucketFilter === 'all' ? 'No buckets yet' : `No ${bucketFilter} buckets`}
+              </h3>
+              <p className="text-gray-500 mb-6">
+                {bucketFilter === 'all' 
+                  ? 'Create your first storage bucket to get started' 
+                  : `You don't have any ${bucketFilter} buckets yet`
+                }
+              </p>
+              {bucketFilter === 'all' && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center space-x-2"
+                >
+                  <span>Create Your First Bucket</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredBuckets.map((bucket) => (
+                <motion.div
+                  key={bucket.id}
+                  className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group relative"
+                  whileHover={{ y: -2 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  {/* Ownership indicator */}
+                  <div className="absolute top-4 right-4 flex items-center space-x-1">
+                    {bucket.isOwned ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Owned
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Shared
+                      </span>
                     )}
                   </div>
-                  <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                    Open bucket
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                  
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`w-12 h-12 bg-gradient-to-r ${bucket.color} rounded-lg flex items-center justify-center text-white text-xl`}>
+                      {getIcon(bucket.preview, "w-6 h-6")}
+                    </div>
+                  </div>
+                  
+                  <h3 className="font-semibold text-gray-900 mb-1">{bucket.name}</h3>
+                  <p className="text-sm text-gray-500 mb-2 line-clamp-2">{bucket.description}</p>
+                  
+                  {/* Owner info for shared buckets */}
+                  {!bucket.isOwned && (
+                    <p className="text-xs text-gray-400 mb-3">
+                      Owned by {bucket.owner}
+                    </p>
+                  )}
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-500">
+                      Created {new Date(bucket.createdAt).toLocaleDateString()}
+                    </div>
+                    <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                      Open bucket
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Create Bucket Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900">Create New Bucket</h2>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Bucket Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bucket Name
+                </label>
+                <input
+                  type="text"
+                  value={newBucket.name}
+                  onChange={(e) => setNewBucket(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter bucket name"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description (Optional)
+                </label>
+                <textarea
+                  value={newBucket.description}
+                  onChange={(e) => setNewBucket(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Enter bucket description"
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              {/* Color Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Color Theme
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {colorOptions.map((color) => (
+                    <button
+                      key={color.value}
+                      onClick={() => setNewBucket(prev => ({ ...prev, color: color.value }))}
+                      className={`w-full h-10 bg-gradient-to-r ${color.value} rounded-lg border-2 transition-all ${
+                        newBucket.color === color.value 
+                          ? 'border-gray-800 scale-105' 
+                          : 'border-gray-200 hover:border-gray-400'
+                      }`}
+                      title={color.name}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Icon Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Icon
+                </label>
+                <div className="grid grid-cols-6 gap-2">
+                  {iconOptions.map((icon) => (
+                    <button
+                      key={icon.value}
+                      onClick={() => setNewBucket(prev => ({ ...prev, preview: icon.value }))}
+                      className={`w-full h-10 rounded-lg border-2 flex items-center justify-center transition-all ${
+                        newBucket.preview === icon.value 
+                          ? 'border-blue-500 bg-blue-50' 
+                          : 'border-gray-200 hover:border-gray-400 hover:bg-gray-50'
+                      }`}
+                      title={icon.name}
+                    >
+                      {getIcon(icon.value, "w-5 h-5")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createBucket}
+                disabled={!newBucket.name.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                <span>Create Bucket</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }
