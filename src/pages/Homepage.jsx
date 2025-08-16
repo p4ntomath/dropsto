@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import dropstoLogo from '/dropstoLogoNoText.png'
 import potIcon from '../assets/potIcon.png'
 
 function Homepage() {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('Recent')
   const [searchQuery, setSearchQuery] = useState('')
   const [bucketFilter, setBucketFilter] = useState('all') // 'all', 'owned', 'shared'
@@ -53,7 +54,12 @@ function Homepage() {
         createdAt: new Date().toISOString()
       }
       
-      setBuckets(prev => [bucket, ...prev])
+      const updatedBuckets = [bucket, ...buckets]
+      setBuckets(updatedBuckets)
+      
+      // Save to localStorage for persistence
+      localStorage.setItem('dropsto-buckets', JSON.stringify(updatedBuckets))
+      
       setShowCreateModal(false)
       setNewBucket({
         name: '',
@@ -453,7 +459,10 @@ function Homepage() {
                     <div className="text-sm text-gray-500">
                       Created {new Date(bucket.createdAt).toLocaleDateString()}
                     </div>
-                    <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                    <button 
+                      onClick={() => navigate(`/bucket/${bucket.id}`)}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
                       Open bucket
                     </button>
                   </div>
