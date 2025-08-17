@@ -36,6 +36,25 @@ function Homepage() {
     { name: 'Database', value: 'database' }
   ]
 
+  // Calculate days until expiration
+  const getDaysUntilExpiration = (createdAt) => {
+    const createdDate = new Date(createdAt)
+    const currentDate = new Date()
+    const expirationDate = new Date(createdDate.getTime() + (7 * 24 * 60 * 60 * 1000)) // 7 days from creation
+    const timeLeft = expirationDate.getTime() - currentDate.getTime()
+    const daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000))
+    return Math.max(0, daysLeft) // Don't return negative days
+  }
+
+  // Get expiration status for styling
+  const getExpirationStatus = (daysLeft) => {
+    if (daysLeft === 0) return { text: 'Expired', color: 'text-red-600 bg-red-100' }
+    if (daysLeft === 1) return { text: '1 day left', color: 'text-red-600 bg-red-100' }
+    if (daysLeft <= 2) return { text: `${daysLeft} days left`, color: 'text-orange-600 bg-orange-100' }
+    if (daysLeft <= 4) return { text: `${daysLeft} days left`, color: 'text-yellow-600 bg-yellow-100' }
+    return { text: `${daysLeft} days left`, color: 'text-green-600 bg-green-100' }
+  }
+
   // Create new bucket function
   const createBucket = () => {
     if (newBucket.name.trim()) {
@@ -331,7 +350,6 @@ function Homepage() {
                 onClick={() => setShowCreateModal(true)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
               >
-                <span>{getIcon('pot', "w-5 h-5")}</span>
                 <span>Create Bucket</span>
               </button>
             </div>
@@ -417,57 +435,66 @@ function Homepage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredBuckets.map((bucket) => (
-                <motion.div
-                  key={bucket.id}
-                  className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group relative"
-                  whileHover={{ y: -2 }}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  {/* Ownership indicator */}
-                  <div className="absolute top-4 right-4 flex items-center space-x-1">
-                    {bucket.isOwned ? (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Owned
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        Shared
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 bg-gradient-to-r ${bucket.color} rounded-lg flex items-center justify-center text-white text-xl`}>
-                      {getIcon(bucket.preview, "w-6 h-6")}
+              {filteredBuckets.map((bucket) => {
+                const daysLeft = getDaysUntilExpiration(bucket.createdAt)
+                const expirationStatus = getExpirationStatus(daysLeft)
+                return (
+                  <motion.div
+                    key={bucket.id}
+                    className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group relative"
+                    whileHover={{ y: -2 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    {/* Ownership indicator */}
+                    <div className="absolute top-4 right-4 flex items-center space-x-1">
+                      {bucket.isOwned ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Owned
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          Shared
+                        </span>
+                      )}
                     </div>
-                  </div>
-                  
-                  <h3 className="font-semibold text-gray-900 mb-1">{bucket.name}</h3>
-                  <p className="text-sm text-gray-500 mb-2 line-clamp-2">{bucket.description}</p>
-                  
-                  {/* Owner info for shared buckets */}
-                  {!bucket.isOwned && (
-                    <p className="text-xs text-gray-400 mb-3">
-                      Owned by {bucket.owner}
+                    
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={`w-12 h-12 bg-gradient-to-r ${bucket.color} rounded-lg flex items-center justify-center text-white text-xl`}>
+                        {getIcon(bucket.preview, "w-6 h-6")}
+                      </div>
+                    </div>
+                    
+                    <h3 className="font-semibold text-gray-900 mb-1">{bucket.name}</h3>
+                    <p className="text-sm text-gray-500 mb-2 line-clamp-2">{bucket.description}</p>
+                    
+                    {/* Expiration status */}
+                    <p className={`text-xs font-medium px-2 py-1 rounded-full ${expirationStatus.color} mb-3`}>
+                      {expirationStatus.text}
                     </p>
-                  )}
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-500">
-                      Created {new Date(bucket.createdAt).toLocaleDateString()}
+                    
+                    {/* Owner info for shared buckets */}
+                    {!bucket.isOwned && (
+                      <p className="text-xs text-gray-400 mb-3">
+                        Owned by {bucket.owner}
+                      </p>
+                    )}
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-500">
+                        Created {new Date(bucket.createdAt).toLocaleDateString()}
+                      </div>
+                      <button 
+                        onClick={() => navigate(`/bucket/${bucket.id}`)}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        Open bucket
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => navigate(`/bucket/${bucket.id}`)}
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                    >
-                      Open bucket
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                )
+              })}
             </div>
           )}
         </div>

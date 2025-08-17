@@ -39,7 +39,28 @@ function BucketView() {
     }
   }
 
+  // Calculate days until expiration
+  const getDaysUntilExpiration = (createdAt) => {
+    const createdDate = new Date(createdAt)
+    const currentDate = new Date()
+    const expirationDate = new Date(createdDate.getTime() + (7 * 24 * 60 * 60 * 1000)) // 7 days from creation
+    const timeLeft = expirationDate.getTime() - currentDate.getTime()
+    const daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000))
+    return Math.max(0, daysLeft) // Don't return negative days
+  }
+
+  // Get expiration status for styling
+  const getExpirationStatus = (daysLeft) => {
+    if (daysLeft === 0) return { text: 'Expired', color: 'text-red-600 bg-red-100' }
+    if (daysLeft === 1) return { text: '1 day left', color: 'text-red-600 bg-red-100' }
+    if (daysLeft <= 2) return { text: `${daysLeft} days left`, color: 'text-orange-600 bg-orange-100' }
+    if (daysLeft <= 4) return { text: `${daysLeft} days left`, color: 'text-yellow-600 bg-yellow-100' }
+    return { text: `${daysLeft} days left`, color: 'text-green-600 bg-green-100' }
+  }
+
   const bucket = getBucketData()
+  const daysLeft = getDaysUntilExpiration(bucket.createdAt || new Date().toISOString())
+  const expirationStatus = getExpirationStatus(daysLeft)
 
   // File type icons
   const getFileIcon = (type, className = "w-6 h-6") => {
@@ -234,6 +255,9 @@ function BucketView() {
                     return total + (unit === 'MB' ? size : size / 1024)
                   }, 0).toFixed(1)} MB
                 </p>
+                <p className={`text-sm font-semibold ${expirationStatus.color} px-2 py-1 rounded-lg`}>
+                  {expirationStatus.text}
+                </p>
               </div>
             </div>
           </div>
@@ -275,9 +299,6 @@ function BucketView() {
                     animate={{ opacity: 1, y: 0 }}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <div className="text-blue-600">
-                        {getFileIcon(file.type, "w-8 h-8")}
-                      </div>
                       <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => downloadFile(file)}
