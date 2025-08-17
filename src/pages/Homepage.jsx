@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import dropstoLogo from '/dropstoLogoNoText.png'
 import potIcon from '../assets/potIcon.png'
 import copyIcon from '../assets/copy.svg'
 
 function Homepage() {
   const navigate = useNavigate()
+  const { user, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('Recent')
   const [searchQuery, setSearchQuery] = useState('')
   const [bucketFilter, setBucketFilter] = useState('all') // 'all', 'owned', 'shared'
@@ -20,6 +22,27 @@ function Homepage() {
   })
   const [showPinModal, setShowPinModal] = useState(false)
   const [createdBucketPin, setCreatedBucketPin] = useState('')
+  const [showUserMenu, setShowUserMenu] = useState(false)
+
+  // Load user's buckets on component mount
+  useEffect(() => {
+    if (user) {
+      loadUserBuckets()
+    }
+  }, [user])
+
+  // Load buckets from localStorage (in a real app, this would be from Firebase/database)
+  const loadUserBuckets = () => {
+    const savedBuckets = localStorage.getItem(`dropsto-buckets-${user.uid}`)
+    if (savedBuckets) {
+      setBuckets(JSON.parse(savedBuckets))
+    }
+  }
+
+  // Save buckets to localStorage with user ID
+  const saveBuckets = (bucketsToSave) => {
+    localStorage.setItem(`dropsto-buckets-${user.uid}`, JSON.stringify(bucketsToSave))
+  }
 
   const colorOptions = [
     { name: 'Blue', value: 'from-blue-500 to-cyan-500' },
@@ -80,9 +103,10 @@ function Homepage() {
         items: 0,
         size: '0 KB',
         preview: newBucket.preview,
-        collaborators: ['user'],
+        collaborators: [user.email],
         color: newBucket.color,
-        owner: 'me',
+        owner: user.displayName || user.email,
+        ownerEmail: user.email,
         isOwned: true,
         createdAt: new Date().toISOString(),
         pinCode: pinCode // Add PIN code to bucket
@@ -91,8 +115,8 @@ function Homepage() {
       const updatedBuckets = [bucket, ...buckets]
       setBuckets(updatedBuckets)
       
-      // Save to localStorage for persistence
-      localStorage.setItem('dropsto-buckets', JSON.stringify(updatedBuckets))
+      // Save to localStorage with user ID
+      saveBuckets(updatedBuckets)
       
       // Also save PIN mapping for easy access
       const pinMappings = JSON.parse(localStorage.getItem('dropsto-pin-mappings') || '{}')
@@ -113,9 +137,21 @@ function Homepage() {
     }
   }
 
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await logout()
+      navigate('/auth')
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+  }
+
   // Delete bucket function
   const deleteBucket = (bucketId) => {
-    setBuckets(prev => prev.filter(bucket => bucket.id !== bucketId))
+    const updatedBuckets = buckets.filter(bucket => bucket.id !== bucketId)
+    setBuckets(updatedBuckets)
+    saveBuckets(updatedBuckets)
   }
 
   const sidebarItems = [
@@ -283,6 +319,38 @@ function Homepage() {
             </div>
           </nav>
         </div>
+
+        {/* User Section with Logout at bottom of sidebar */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center space-x-3 mb-3">
+            {user?.photoURL ? (
+              <img 
+                src={user.photoURL} 
+                alt="Profile" 
+                className="w-10 h-10 rounded-full"
+              />
+            ) : (
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {user?.displayName || 'User'}
+              </p>
+              <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center space-x-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}
@@ -306,10 +374,41 @@ function Homepage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
-                <span className="font-medium text-gray-900">Mahlatse Rabothata</span>
-                <button className="text-gray-400">{getIcon('settings')}</button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center space-x-2 hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors"
+                >
+                  {user?.photoURL ? (
+                    <img 
+                      src={user.photoURL} 
+                      alt="Profile" 
+                      className="w-8 h-8 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                      {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                    </div>
+                  )}
+                  <span className="font-medium text-gray-900">{user?.displayName || user?.email}</span>
+                  <button className="text-gray-400">{getIcon('settings')}</button>
+                </button>
+                
+                {/* User Menu Dropdown */}
+                {showUserMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                    <div className="px-4 py-2 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900">{user?.displayName || 'User'}</p>
+                      <p className="text-xs text-gray-500">{user?.email}</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

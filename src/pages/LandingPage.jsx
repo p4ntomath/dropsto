@@ -13,14 +13,15 @@ function LandingPage() {
     if (!vantaEffect && vantaRef.current && window.VANTA) {
       setVantaEffect(
         window.VANTA.BIRDS({
-            el: vantaRef.current,
-            mouseControls: true,
-            touchControls: true,
-            gyroControls: false,
-            minHeight: 200.00,
-            minWidth: 200.00,
-            scale: 1.00,
-            scaleMobile: 1.00
+          el: vantaRef.current,
+          mouseControls: true,
+          touchControls: true,
+          gyroControls: false,
+          color1: 0x1e3a8a, // Blue
+          minHeight: 200.00,
+          minWidth: 200.00,
+          scale: 1.00,
+          scaleMobile: 1.00
         })
       )
     }
@@ -39,8 +40,8 @@ function LandingPage() {
   }
 
   return (
-    <div ref={vantaRef} className="min-h-screen relative">
-      <div className="min-h-screen bg-gradient-to-br from-slate-900/40 via-blue-900/40 to-cyan-900/40 relative z-10">
+    <div className="min-h-screen relative overflow-hidden" ref={vantaRef}>
+      <div className="relative z-10">
         <motion.div
           initial="hidden"
           animate="visible"

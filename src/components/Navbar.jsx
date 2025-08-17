@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 function Navbar({ isMenuOpen, setIsMenuOpen }) {
   return (
     <nav className="relative z-50 bg-white/10 backdrop-blur-md border-b border-white/20">
@@ -16,9 +18,12 @@ function Navbar({ isMenuOpen, setIsMenuOpen }) {
           
           <div className="hidden md:flex items-center space-x-8">
             <a href="#features" className="text-white/80 text-md hover:text-white transition-colors">How To Use</a>
-            <button className="bg-white/20 text-white text-md px-4 py-1 rounded-lg hover:bg-white/30 transition-colors">
+            <Link 
+              to="/auth" 
+              className="bg-white/20 text-white text-md px-4 py-1 rounded-lg hover:bg-white/30 transition-colors"
+            >
               Sign In
-            </button>
+            </Link>
           </div>
 
           <button 
