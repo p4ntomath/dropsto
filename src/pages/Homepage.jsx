@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import dropstoLogo from '/dropstoLogoNoText.png'
 import potIcon from '../assets/potIcon.png'
+import copyIcon from '../assets/copy.svg'
 
 function Homepage() {
   const navigate = useNavigate()
@@ -17,6 +18,8 @@ function Homepage() {
     color: 'from-blue-500 to-cyan-500',
     preview: 'folder'
   })
+  const [showPinModal, setShowPinModal] = useState(false)
+  const [createdBucketPin, setCreatedBucketPin] = useState('')
 
   const colorOptions = [
     { name: 'Blue', value: 'from-blue-500 to-cyan-500' },
@@ -55,9 +58,20 @@ function Homepage() {
     return { text: `${daysLeft} days left`, color: 'text-green-600 bg-green-100' }
   }
 
+  // Generate PIN code for bucket
+  const generatePinCode = () => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    let result = 'drop-'
+    for (let i = 0; i < 8; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length))
+    }
+    return result
+  }
+
   // Create new bucket function
   const createBucket = () => {
     if (newBucket.name.trim()) {
+      const pinCode = generatePinCode()
       const bucket = {
         id: Date.now(), // Simple ID generation
         name: newBucket.name.trim(),
@@ -70,7 +84,8 @@ function Homepage() {
         color: newBucket.color,
         owner: 'me',
         isOwned: true,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        pinCode: pinCode // Add PIN code to bucket
       }
       
       const updatedBuckets = [bucket, ...buckets]
@@ -79,6 +94,11 @@ function Homepage() {
       // Save to localStorage for persistence
       localStorage.setItem('dropsto-buckets', JSON.stringify(updatedBuckets))
       
+      // Also save PIN mapping for easy access
+      const pinMappings = JSON.parse(localStorage.getItem('dropsto-pin-mappings') || '{}')
+      pinMappings[pinCode] = bucket.id
+      localStorage.setItem('dropsto-pin-mappings', JSON.stringify(pinMappings))
+      
       setShowCreateModal(false)
       setNewBucket({
         name: '',
@@ -86,6 +106,10 @@ function Homepage() {
         color: 'from-blue-500 to-cyan-500',
         preview: 'folder'
       })
+      
+      // Show PIN code to user
+      setCreatedBucketPin(pinCode)
+      setShowPinModal(true)
     }
   }
 
@@ -485,12 +509,26 @@ function Homepage() {
                       <div className="text-sm text-gray-500">
                         Created {new Date(bucket.createdAt).toLocaleDateString()}
                       </div>
-                      <button 
-                        onClick={() => navigate(`/bucket/${bucket.id}`)}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                      >
-                        Open bucket
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        {bucket.pinCode && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigator.clipboard.writeText(bucket.pinCode)
+                            }}
+                            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded font-mono text-gray-600"
+                            title={`PIN: ${bucket.pinCode} (Click to copy)`}
+                          >
+                            PIN: {bucket.pinCode}
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => navigate(`/bucket/${bucket.id}`)}
+                          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                        >
+                          Open bucket
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 )
@@ -606,6 +644,57 @@ function Homepage() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 <span>Create Bucket</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* PIN Display Modal */}
+      {showPinModal && (
+        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl"
+          >
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Bucket Created Successfully!</h2>
+              <p className="text-gray-600 mb-6">Your bucket PIN code is ready. Save this code to access your bucket from anywhere.</p>
+              
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">PIN Code</label>
+                <div className="flex items-center justify-center">
+                  <code className="text-2xl font-mono font-bold text-blue-600 bg-white px-4 py-2 rounded border border-gray-200">
+                    {createdBucketPin}
+                  </code>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(createdBucketPin)}
+                    className="ml-3 p-2 text-gray-400 hover:text-gray-600 rounded"
+                    title="Copy PIN"
+                  >
+                    <img src={copyIcon} alt="Copy" className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-800">
+                  <strong>Important:</strong> Anyone with this PIN code can access your bucket. Keep it secure and only share with trusted people.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowPinModal(false)}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Got it!
               </button>
             </div>
           </motion.div>

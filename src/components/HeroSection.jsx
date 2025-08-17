@@ -1,8 +1,13 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
+import copyIcon from '../assets/copy.svg'
 
 function HeroSection() {
   const [pin, setPin] = useState('')
+  const [pinError, setPinError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const navigate = useNavigate()
 
   const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
@@ -40,10 +45,33 @@ function HeroSection() {
     }
   }
 
-  const handleRetrieveFiles = () => {
-    if (pin.trim()) {
-      console.log('Retrieving files with PIN:', pin)
-      // Add your file retrieval logic here
+  const handleRetrieveFiles = async () => {
+    if (!pin.trim()) return
+    
+    setIsLoading(true)
+    setPinError('')
+    
+    try {
+      // Check PIN mappings in localStorage
+      const pinMappings = JSON.parse(localStorage.getItem('dropsto-pin-mappings') || '{}')
+      const bucketId = pinMappings[pin.trim()]
+      
+      if (bucketId) {
+        // PIN is valid, navigate to bucket
+        navigate(`/bucket/${bucketId}`)
+      } else {
+        setPinError('Invalid PIN code. Please check and try again.')
+      }
+    } catch (error) {
+      setPinError('Error accessing bucket. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handlePinKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleRetrieveFiles()
     }
   }
 
@@ -78,15 +106,17 @@ function HeroSection() {
                   type="text"
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
+                  onKeyPress={handlePinKeyPress}
                   placeholder="Enter PIN to retrieve files"
                   className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-center text-lg"
                 />
+                {pinError && <p className="text-red-500 text-sm">{pinError}</p>}
                 <button
                   onClick={handleRetrieveFiles}
-                  disabled={!pin.trim()}
+                  disabled={!pin.trim() || isLoading}
                   className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white py-3 rounded-lg text-lg hover:from-cyan-600 hover:to-blue-600 transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg"
                 >
-                  Retrieve Files
+                  {isLoading ? 'Retrieving...' : 'Retrieve Files'}
                 </button>
               </div>
             </div>
