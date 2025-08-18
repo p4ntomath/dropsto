@@ -602,11 +602,11 @@ function Homepage() {
 
       {/* Create Bucket Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
+        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl"
+            className="bg-white rounded-xl p-6 w-full max-w-md mx-auto shadow-2xl max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Create New Bucket</h2>

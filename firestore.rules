@@ -12,7 +12,7 @@ service cloud.firestore {
       
       // Allow create if user is authenticated and is setting themselves as owner
       allow create: if request.auth != null && 
-        request.auth.uid == resource.data.ownerId;
+        request.auth.uid == request.resource.data.ownerId;
       
       // Allow update if user is the owner
       allow update: if request.auth != null && 

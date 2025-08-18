@@ -14,7 +14,6 @@ export const useBuckets = () => {
   // Load user's buckets with retry mechanism
   const loadBuckets = useCallback(async (retryCount = 0) => {
     if (!user?.uid) {
-      console.log('No user authenticated, clearing buckets')
       setBuckets([])
       setLoading(false)
       return
@@ -23,8 +22,6 @@ export const useBuckets = () => {
     try {
       setLoading(true)
       setError(null)
-
-      console.log('Loading buckets for user:', user.uid, user.email)
 
       // Add timeout to prevent infinite loading
       const timeoutPromise = new Promise((_, reject) => 
@@ -42,10 +39,6 @@ export const useBuckets = () => {
         timeoutPromise
       ])
 
-      console.log('Successfully loaded buckets:')
-      console.log('- Owned buckets:', ownedBuckets.length)
-      console.log('- Shared buckets:', sharedBuckets.length)
-
       // Combine and sort buckets
       const allBuckets = [
         ...ownedBuckets.map(bucket => ({ ...bucket, isOwned: true })),
@@ -53,7 +46,6 @@ export const useBuckets = () => {
       ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
       setBuckets(allBuckets)
-      console.log('Total buckets loaded successfully:', allBuckets.length)
     } catch (err) {
       console.error('Error loading buckets:', err)
       
@@ -75,14 +67,12 @@ export const useBuckets = () => {
       // Set empty buckets on error to show the UI
       setBuckets([])
     } finally {
-      console.log('Finished loading buckets, setting loading to false')
       setLoading(false)
     }
   }, [user?.uid, user?.email])
 
   // Retry loading buckets (useful for error recovery)
   const retryLoadBuckets = useCallback(() => {
-    console.log('Retrying bucket loading...')
     loadBuckets(0)
   }, [loadBuckets])
 

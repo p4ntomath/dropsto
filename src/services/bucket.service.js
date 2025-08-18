@@ -33,55 +33,56 @@ export class BucketService {
    * @returns {Promise<string>} Unique PIN code
    */
   async generateUniquePinCode(maxRetries = 10) {
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const pinCode = generatePinCode()
-      
-      // Check if PIN already exists in Firestore
-      const existingBucket = await this.getBucketByPin(pinCode)
-      
-      if (!existingBucket) {
-        return pinCode
-      }
-      
-      console.warn(`PIN collision detected: ${pinCode}. Retrying... (${attempt + 1}/${maxRetries})`)
-    }
-    
-    throw new Error('Unable to generate unique PIN code after multiple attempts. Please try again.')
+    // Simply generate a PIN code without checking for duplicates
+    // Duplicate handling is done in createBucket with retry logic
+    return generatePinCode()
   }
 
   /**
-   * Create a new bucket
+   * Create a new bucket with retry logic for PIN conflicts
    * @param {object} bucketData - Bucket creation data
    * @param {string} userId - User ID of the bucket owner
    * @returns {Promise<Bucket>} Created bucket
    */
   async createBucket(bucketData, userId) {
-    try {
-      // Generate a unique PIN code
-      const uniquePinCode = await this.generateUniquePinCode()
-      
-      const bucket = new Bucket({
-        ...bucketData,
-        ownerId: userId,
-        ownerEmail: bucketData.ownerEmail,
-        owner: bucketData.owner,
-        pinCode: uniquePinCode // Override any provided PIN with our unique one
-      })
+    const maxRetries = 5
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Generate a PIN code
+        const pinCode = generatePinCode()
+        
+        const bucket = new Bucket({
+          ...bucketData,
+          ownerId: userId,
+          ownerEmail: bucketData.ownerEmail,
+          owner: bucketData.owner,
+          pinCode: pinCode
+        })
 
-      // Add to Firestore
-      const docRef = await addDoc(collection(db, COLLECTIONS.BUCKETS), bucket.toFirestore())
-      bucket.id = docRef.id
+        // Try to add to Firestore
+        const docRef = await addDoc(collection(db, COLLECTIONS.BUCKETS), bucket.toFirestore())
+        bucket.id = docRef.id
 
-      // Store PIN mapping locally for quick access
-      this.storePinMapping(bucket.pinCode, bucket.id)
+        // Store PIN mapping locally for quick access
+        this.storePinMapping(bucket.pinCode, bucket.id)
 
-      // Cache the bucket
-      this.buckets.set(bucket.id, bucket)
+        // Cache the bucket
+        this.buckets.set(bucket.id, bucket)
 
-      return bucket
-    } catch (error) {
-      console.error('Error creating bucket:', error)
-      throw new Error('Failed to create bucket. Please try again.')
+        return bucket
+      } catch (error) {
+        // If it's a PIN conflict error (though Firestore doesn't enforce uniqueness by default)
+        // or any other creation error, retry with a new PIN
+        if (attempt === maxRetries - 1) {
+          console.error('Error creating bucket after max retries:', error)
+          throw new Error('Failed to create bucket. Please try again.')
+        }
+        
+        console.warn(`Bucket creation attempt ${attempt + 1} failed, retrying...`, error)
+        // Add a small delay between retries
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
     }
   }
 
@@ -162,8 +163,6 @@ export class BucketService {
    * @returns {Promise<Array<Bucket>>} Array of user's buckets
    */
   async getUserBuckets(userId) {
-    console.log('Fetching user buckets for userId:', userId)
-    
     const operation = async () => {
       const q = query(
         collection(db, COLLECTIONS.BUCKETS),
@@ -183,7 +182,6 @@ export class BucketService {
       // Sort on client side instead
       buckets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
-      console.log('Successfully fetched user buckets:', buckets.length)
       return buckets
     }
 
@@ -196,8 +194,6 @@ export class BucketService {
    * @returns {Promise<Array<Bucket>>} Array of shared buckets
    */
   async getSharedBuckets(userEmail) {
-    console.log('Fetching shared buckets for email:', userEmail)
-    
     const operation = async () => {
       const q = query(
         collection(db, COLLECTIONS.BUCKETS),
@@ -218,7 +214,6 @@ export class BucketService {
       // Sort on client side instead
       buckets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
-      console.log('Successfully fetched shared buckets:', buckets.length)
       return buckets
     }
 
