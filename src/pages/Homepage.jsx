@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useBuckets } from '../hooks/useBuckets'
+import { BUCKET_COLORS, BUCKET_ICONS } from '../utils/constants'
+import { getDaysUntilExpiration, getExpirationStatus } from '../utils/helpers'
 import dropstoLogo from '/dropstoLogoNoText.png'
 import potIcon from '../assets/potIcon.png'
 import copyIcon from '../assets/copy.svg'
@@ -9,10 +12,20 @@ import copyIcon from '../assets/copy.svg'
 function Homepage() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const { 
+    buckets, 
+    loading: bucketsLoading, 
+    error: bucketsError,
+    createBucket: createBucketService,
+    deleteBucket: deleteBucketService,
+    getOwnedBuckets,
+    getSharedBuckets,
+    clearError
+  } = useBuckets()
+
   const [activeTab, setActiveTab] = useState('Recent')
   const [searchQuery, setSearchQuery] = useState('')
   const [bucketFilter, setBucketFilter] = useState('all') // 'all', 'owned', 'shared'
-  const [buckets, setBuckets] = useState([]) // Start with empty buckets array
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newBucket, setNewBucket] = useState({
     name: '',
@@ -23,105 +36,15 @@ function Homepage() {
   const [showPinModal, setShowPinModal] = useState(false)
   const [createdBucketPin, setCreatedBucketPin] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isCreatingBucket, setIsCreatingBucket] = useState(false)
 
-  // Load user's buckets on component mount
-  useEffect(() => {
-    if (user) {
-      loadUserBuckets()
-    }
-  }, [user])
+  // Create new bucket function using service
+  const createBucket = async () => {
+    if (!newBucket.name.trim()) return
 
-  // Load buckets from localStorage (in a real app, this would be from Firebase/database)
-  const loadUserBuckets = () => {
-    const savedBuckets = localStorage.getItem(`dropsto-buckets-${user.uid}`)
-    if (savedBuckets) {
-      setBuckets(JSON.parse(savedBuckets))
-    }
-  }
-
-  // Save buckets to localStorage with user ID
-  const saveBuckets = (bucketsToSave) => {
-    localStorage.setItem(`dropsto-buckets-${user.uid}`, JSON.stringify(bucketsToSave))
-  }
-
-  const colorOptions = [
-    { name: 'Blue', value: 'from-blue-500 to-cyan-500' },
-    { name: 'Purple', value: 'from-purple-500 to-pink-500' },
-    { name: 'Green', value: 'from-green-500 to-blue-500' },
-    { name: 'Orange', value: 'from-orange-500 to-red-500' },
-    { name: 'Indigo', value: 'from-indigo-500 to-purple-500' },
-    { name: 'Gray', value: 'from-gray-500 to-slate-600' }
-  ]
-
-  const iconOptions = [
-    { name: 'Folder', value: 'folder' },
-    { name: 'Document', value: 'document' },
-    { name: 'Image', value: 'image' },
-    { name: 'Video', value: 'video' },
-    { name: 'Briefcase', value: 'briefcase' },
-    { name: 'Database', value: 'database' }
-  ]
-
-  // Calculate days until expiration
-  const getDaysUntilExpiration = (createdAt) => {
-    const createdDate = new Date(createdAt)
-    const currentDate = new Date()
-    const expirationDate = new Date(createdDate.getTime() + (7 * 24 * 60 * 60 * 1000)) // 7 days from creation
-    const timeLeft = expirationDate.getTime() - currentDate.getTime()
-    const daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000))
-    return Math.max(0, daysLeft) // Don't return negative days
-  }
-
-  // Get expiration status for styling
-  const getExpirationStatus = (daysLeft) => {
-    if (daysLeft === 0) return { text: 'Expired', color: 'text-red-600 bg-red-100' }
-    if (daysLeft === 1) return { text: '1 day left', color: 'text-red-600 bg-red-100' }
-    if (daysLeft <= 2) return { text: `${daysLeft} days left`, color: 'text-orange-600 bg-orange-100' }
-    if (daysLeft <= 4) return { text: `${daysLeft} days left`, color: 'text-yellow-600 bg-yellow-100' }
-    return { text: `${daysLeft} days left`, color: 'text-green-600 bg-green-100' }
-  }
-
-  // Generate PIN code for bucket
-  const generatePinCode = () => {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-    let result = 'drop-'
-    for (let i = 0; i < 8; i++) {
-      result += characters.charAt(Math.floor(Math.random() * characters.length))
-    }
-    return result
-  }
-
-  // Create new bucket function
-  const createBucket = () => {
-    if (newBucket.name.trim()) {
-      const pinCode = generatePinCode()
-      const bucket = {
-        id: Date.now(), // Simple ID generation
-        name: newBucket.name.trim(),
-        description: newBucket.description.trim() || 'No description provided',
-        type: 'bucket',
-        items: 0,
-        size: '0 KB',
-        preview: newBucket.preview,
-        collaborators: [user.email],
-        color: newBucket.color,
-        owner: user.displayName || user.email,
-        ownerEmail: user.email,
-        isOwned: true,
-        createdAt: new Date().toISOString(),
-        pinCode: pinCode // Add PIN code to bucket
-      }
-      
-      const updatedBuckets = [bucket, ...buckets]
-      setBuckets(updatedBuckets)
-      
-      // Save to localStorage with user ID
-      saveBuckets(updatedBuckets)
-      
-      // Also save PIN mapping for easy access
-      const pinMappings = JSON.parse(localStorage.getItem('dropsto-pin-mappings') || '{}')
-      pinMappings[pinCode] = bucket.id
-      localStorage.setItem('dropsto-pin-mappings', JSON.stringify(pinMappings))
+    try {
+      setIsCreatingBucket(true)
+      const bucket = await createBucketService(newBucket)
       
       setShowCreateModal(false)
       setNewBucket({
@@ -132,8 +55,13 @@ function Homepage() {
       })
       
       // Show PIN code to user
-      setCreatedBucketPin(pinCode)
+      setCreatedBucketPin(bucket.pinCode)
       setShowPinModal(true)
+    } catch (error) {
+      console.error('Error creating bucket:', error)
+      // Error is handled by the hook
+    } finally {
+      setIsCreatingBucket(false)
     }
   }
 
@@ -147,36 +75,74 @@ function Homepage() {
     }
   }
 
-  // Delete bucket function
-  const deleteBucket = (bucketId) => {
-    const updatedBuckets = buckets.filter(bucket => bucket.id !== bucketId)
-    setBuckets(updatedBuckets)
-    saveBuckets(updatedBuckets)
+  // Delete bucket function using service
+  const deleteBucket = async (bucketId) => {
+    try {
+      await deleteBucketService(bucketId)
+    } catch (error) {
+      console.error('Error deleting bucket:', error)
+    }
   }
+
+  // Get filtered buckets based on ownership
+  const getFilteredBuckets = () => {
+    let filtered = buckets
+    
+    if (bucketFilter === 'owned') {
+      filtered = getOwnedBuckets()
+    } else if (bucketFilter === 'shared') {
+      filtered = getSharedBuckets()
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(bucket =>
+        bucket.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        bucket.description.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    }
+
+    return filtered
+  }
+
+  const filteredBuckets = getFilteredBuckets()
+  const ownedBucketsCount = getOwnedBuckets().length
+  const sharedBucketsCount = getSharedBuckets().length
 
   const sidebarItems = [
     { name: 'Home', icon: 'home', active: true },
-    { name: 'My buckets', icon: 'pot', count: buckets.filter(b => b.isOwned).length },
-    { name: 'Shared buckets', icon: 'share', count: buckets.filter(b => !b.isOwned).length }
+    { name: 'My buckets', icon: 'pot', count: ownedBucketsCount },
+    { name: 'Shared buckets', icon: 'share', count: sharedBucketsCount }
   ]
 
   const tabs = ['Recent', 'Favorites', 'Shared']
 
-  // Filter buckets based on ownership
-  const filteredBuckets = buckets.filter(bucket => {
-    if (bucketFilter === 'owned') return bucket.isOwned
-    if (bucketFilter === 'shared') return !bucket.isOwned
-    return true // 'all'
-  })
-
   const quickActions = [
     { name: 'Create new bucket', icon: 'pot', action: () => setShowCreateModal(true) },
-    { name: 'Upload files', icon: 'upload', action: () => {} },
+    { 
+      name: 'Upload files', 
+      icon: 'upload', 
+      action: () => {
+        if (buckets.length === 0) {
+          alert('Please create a bucket first before uploading files.')
+          return
+        }
+        const mostRecentBucket = buckets.find(b => b.isOwned) || buckets[0]
+        if (mostRecentBucket) {
+          navigate(`/bucket/${mostRecentBucket.id}`)
+        }
+      }
+    },
     { name: 'Share bucket', icon: 'link', action: () => {} },
     { name: 'Import bucket', icon: 'folder', action: () => {} }
   ]
 
-  // Icon component helper
+  // Calculate total storage used
+  const totalStorageUsed = buckets.reduce((total, bucket) => total + (bucket.storageUsed || 0), 0)
+  const totalStorageUsedMB = totalStorageUsed / (1024 * 1024)
+  const storagePercentage = Math.round((totalStorageUsedMB / 30) * 100)
+
+  // ...existing code... (getIcon function remains the same)
   const getIcon = (iconName, className = "w-5 h-5") => {
     if (iconName === 'pot') {
       return <img src={potIcon} alt="Pot Icon" className={className} />
@@ -188,6 +154,7 @@ function Homepage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
       ),
+      // ...rest of icons remain the same...
       bucket: (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -196,36 +163,6 @@ function Homepage() {
       share: (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-        </svg>
-      ),
-      document: (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-      image: (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      ),
-      briefcase: (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2a2 2 0 01-2 2H8m8 0v2a2 2 0 01-2 2H10a2 2 0 01-2-2V6" />
-        </svg>
-      ),
-      video: (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-        </svg>
-      ),
-      palette: (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM7 3H5a2 2 0 00-2 2v12a4 4 0 004 4h2a2 2 0 002-2V5a2 2 0 00-2-2z" />
-        </svg>
-      ),
-      database: (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
         </svg>
       ),
       upload: (
@@ -238,14 +175,34 @@ function Homepage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
         </svg>
       ),
-      phone: (
+      folder: (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a1 1 0 001-1V4a1 1 0 00-1-1H8a1 1 0 00-1 1v16a1 1 0 001 1z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
         </svg>
       ),
-      chart: (
+      document: (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      image: (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      video: (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      ),
+      briefcase: (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2a2 2 0 01-2 2H8m8 0v2a2 2 0 01-2 2H10a2 2 0 01-2-2V6" />
+        </svg>
+      ),
+      database: (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
         </svg>
       ),
       users: (
@@ -258,16 +215,6 @@ function Homepage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
-      ),
-      trash: (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-      ),
-      folder: (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-        </svg>
       )
     }
     return icons[iconName] || icons.folder
@@ -275,6 +222,36 @@ function Homepage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* Enhanced Error Display */}
+      {bucketsError && (
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          className="fixed top-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 max-w-sm"
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex">
+              <svg className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="font-medium text-sm">Error</p>
+                <p className="text-sm opacity-90">{bucketsError}</p>
+              </div>
+            </div>
+            <button
+              onClick={clearError}
+              className="ml-2 text-white hover:text-gray-200 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {/* Sidebar */}
       <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
         {/* Logo */}
@@ -306,13 +283,12 @@ function Homepage() {
                   <span className="text-lg">{getIcon(item.icon)}</span>
                   <span className="font-medium">{item.name}</span>
                 </div>
-                {item.count && (
+                {item.count !== undefined && (
                   <span className="text-sm text-gray-400">{item.count}</span>
                 )}
               </div>
             ))}
             
-            {/* Additional Actions - now part of main navigation */}
             <div className="flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer">
               <span className="text-lg">{getIcon('users')}</span>
               <span className="font-medium">Manage access</span>
@@ -320,7 +296,7 @@ function Homepage() {
           </nav>
         </div>
 
-        {/* User Section with Logout at bottom of sidebar */}
+        {/* User Section */}
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center space-x-3 mb-3">
             {user?.photoURL ? (
@@ -391,10 +367,9 @@ function Homepage() {
                     </div>
                   )}
                   <span className="font-medium text-gray-900">{user?.displayName || user?.email}</span>
-                  <button className="text-gray-400">{getIcon('settings')}</button>
+                  <span className="text-gray-400">{getIcon('settings')}</span>
                 </button>
                 
-                {/* User Menu Dropdown */}
                 {showUserMenu && (
                   <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                     <div className="px-4 py-2 border-b border-gray-100">
@@ -455,7 +430,7 @@ function Homepage() {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Owned ({buckets.filter(b => b.isOwned).length})
+                  Owned ({ownedBucketsCount})
                 </button>
                 <button
                   onClick={() => setBucketFilter('shared')}
@@ -465,7 +440,7 @@ function Homepage() {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Shared ({buckets.filter(b => !b.isOwned).length})
+                  Shared ({sharedBucketsCount})
                 </button>
               </div>
               
@@ -501,39 +476,30 @@ function Homepage() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Storage Usage</h3>
                 <p className="text-sm text-gray-600">
-                  {buckets.reduce((total, bucket) => {
-                    const sizeNum = parseFloat(bucket.size.split(' ')[0]) || 0
-                    const unit = bucket.size.split(' ')[1]
-                    return total + (unit === 'MB' ? sizeNum : sizeNum / 1024)
-                  }, 0).toFixed(1)} MB used of 30 MB available
+                  {totalStorageUsedMB.toFixed(1)} MB used of 30 MB available
                 </p>
               </div>
               <div className="text-right">
                 <div className="text-2xl font-bold text-blue-600">
-                  {Math.round((buckets.reduce((total, bucket) => {
-                    const sizeNum = parseFloat(bucket.size.split(' ')[0]) || 0
-                    const unit = bucket.size.split(' ')[1]
-                    return total + (unit === 'MB' ? sizeNum : sizeNum / 1024)
-                  }, 0) / 30) * 100)}%
+                  {storagePercentage}%
                 </div>
                 <div className="w-32 h-2 bg-gray-200 rounded-full mt-1">
                   <div 
                     className="h-2 bg-blue-500 rounded-full transition-all duration-300"
-                    style={{ 
-                      width: `${Math.min((buckets.reduce((total, bucket) => {
-                        const sizeNum = parseFloat(bucket.size.split(' ')[0]) || 0
-                        const unit = bucket.size.split(' ')[1]
-                        return total + (unit === 'MB' ? sizeNum : sizeNum / 1024)
-                      }, 0) / 30) * 100, 100)}%` 
-                    }}
+                    style={{ width: `${Math.min(storagePercentage, 100)}%` }}
                   ></div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Empty State or Buckets Grid */}
-          {filteredBuckets.length === 0 ? (
+          {/* Loading State */}
+          {bucketsLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading your buckets...</p>
+            </div>
+          ) : filteredBuckets.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                 {getIcon('pot', "w-12 h-12 text-gray-400")}
@@ -570,7 +536,6 @@ function Homepage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                   >
-                    {/* Ownership indicator */}
                     <div className="absolute top-4 right-4 flex items-center space-x-1">
                       {bucket.isOwned ? (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -592,12 +557,10 @@ function Homepage() {
                     <h3 className="font-semibold text-gray-900 mb-1">{bucket.name}</h3>
                     <p className="text-sm text-gray-500 mb-2 line-clamp-2">{bucket.description}</p>
                     
-                    {/* Expiration status */}
                     <p className={`text-xs font-medium px-2 py-1 rounded-full ${expirationStatus.color} mb-3`}>
                       {expirationStatus.text}
                     </p>
                     
-                    {/* Owner info for shared buckets */}
                     {!bucket.isOwned && (
                       <p className="text-xs text-gray-400 mb-3">
                         Owned by {bucket.owner}
@@ -606,7 +569,7 @@ function Homepage() {
                     
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-gray-500">
-                        Created {new Date(bucket.createdAt).toLocaleDateString()}
+                        {bucket.fileCount || 0} files • {bucket.getFormattedSize ? bucket.getFormattedSize() : '0 Bytes'}
                       </div>
                       <div className="flex items-center space-x-2">
                         {bucket.pinCode && (
@@ -656,7 +619,6 @@ function Homepage() {
             </div>
 
             <div className="space-y-4">
-              {/* Bucket Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Bucket Name
@@ -670,7 +632,6 @@ function Homepage() {
                 />
               </div>
 
-              {/* Description */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Description (Optional)
@@ -684,13 +645,12 @@ function Homepage() {
                 />
               </div>
 
-              {/* Color Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Color Theme
                 </label>
                 <div className="grid grid-cols-3 gap-2">
-                  {colorOptions.map((color) => (
+                  {BUCKET_COLORS.map((color) => (
                     <button
                       key={color.value}
                       onClick={() => setNewBucket(prev => ({ ...prev, color: color.value }))}
@@ -705,13 +665,12 @@ function Homepage() {
                 </div>
               </div>
 
-              {/* Icon Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Icon
                 </label>
                 <div className="grid grid-cols-6 gap-2">
-                  {iconOptions.map((icon) => (
+                  {BUCKET_ICONS.map((icon) => (
                     <button
                       key={icon.value}
                       onClick={() => setNewBucket(prev => ({ ...prev, preview: icon.value }))}
@@ -729,7 +688,6 @@ function Homepage() {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex justify-end space-x-3 mt-6">
               <button
                 onClick={() => setShowCreateModal(false)}
@@ -739,10 +697,17 @@ function Homepage() {
               </button>
               <button
                 onClick={createBucket}
-                disabled={!newBucket.name.trim()}
+                disabled={!newBucket.name.trim() || isCreatingBucket}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
-                <span>Create Bucket</span>
+                {isCreatingBucket ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Creating...</span>
+                  </>
+                ) : (
+                  <span>Create Bucket</span>
+                )}
               </button>
             </div>
           </motion.div>

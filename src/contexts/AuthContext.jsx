@@ -1,12 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { 
-  onAuthStateChanged, 
-  signInWithPopup, 
-  signOut,
-  setPersistence,
-  browserLocalPersistence
-} from 'firebase/auth'
-import { auth, googleProvider } from '../firebase/config'
+import { authService } from '../services/auth.service.js'
 
 const AuthContext = createContext({})
 
@@ -24,14 +17,8 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    // Set persistence to local storage
-    setPersistence(auth, browserLocalPersistence)
-      .catch((error) => {
-        console.error('Error setting persistence:', error)
-      })
-
-    // Listen for authentication state changes
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    // Listen for authentication state changes using the service
+    const unsubscribe = authService.onAuthStateChange((user) => {
       setUser(user)
       setLoading(false)
     })
@@ -39,13 +26,13 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe
   }, [])
 
-  // Sign in with Google
+  // Sign in with Google using the service
   const signInWithGoogle = async () => {
     try {
       setError(null)
       setLoading(true)
-      const result = await signInWithPopup(auth, googleProvider)
-      return result.user
+      const user = await authService.signInWithGoogle()
+      return user
     } catch (error) {
       setError(error.message)
       throw error
@@ -54,14 +41,13 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Sign out
-  const logout = async () => {
+  // Sign out function
+  const signOut = async () => {
     try {
-      setError(null)
-      await signOut(auth)
+      await authService.signOut()
+      setUser(null)
     } catch (error) {
-      setError(error.message)
-      throw error
+      console.error('Error signing out:', error)
     }
   }
 
@@ -70,7 +56,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     error,
     signInWithGoogle,
-    logout,
+    logout: signOut,
     isAuthenticated: !!user
   }
 

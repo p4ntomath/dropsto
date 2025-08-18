@@ -1,116 +1,208 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { bucketService } from '../services/bucket.service'
+import { fileService } from '../services/file.service'
+import { getDaysUntilExpiration, getExpirationStatus, formatFileSize } from '../utils/helpers'
 import dropstoLogo from '/dropstoLogoNoText.png'
 import potIcon from '../assets/potIcon.png'
 
 function BucketView() {
   const { bucketId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const fileInputRef = useRef(null)
   
-  const [files, setFiles] = useState([]) // Start with empty files array
+  // State management
+  const [bucket, setBucket] = useState(null)
+  const [files, setFiles] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState(null)
   
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)
+  const [showNotificationModal, setShowNotificationModal] = useState(false)
+  const [notificationData, setNotificationData] = useState({
+    type: 'success',
+    title: '',
+    message: '',
+    details: []
+  })
   const [selectedFile, setSelectedFile] = useState(null)
   const [newFileName, setNewFileName] = useState('')
   const [dragActive, setDragActive] = useState(false)
-  const [viewMode, setViewMode] = useState('grid') // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('grid')
 
-  // Get bucket data from localStorage or state (in real app this would come from API/props)
-  const getBucketData = () => {
-    const savedBuckets = localStorage.getItem('dropsto-buckets')
-    if (savedBuckets) {
-      const buckets = JSON.parse(savedBuckets)
-      const currentBucket = buckets.find(b => b.id === parseInt(bucketId))
-      if (currentBucket) {
-        return currentBucket
+  // Load bucket and files on component mount
+  useEffect(() => {
+    loadBucketData()
+  }, [bucketId])
+
+  // Enhanced loadBucketData with better error handling
+  const loadBucketData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Load bucket information
+      const bucketData = await bucketService.getBucketById(bucketId)
+      if (!bucketData) {
+        setError('Bucket not found')
+        return
       }
+      setBucket(bucketData)
+
+      // Load files in the bucket
+      const bucketFiles = await fileService.getBucketFiles(bucketId)
+      setFiles(bucketFiles)
+    } catch (err) {
+      console.error('Error loading bucket data:', err)
+      setError(err.message || 'Failed to load bucket data')
+    } finally {
+      setLoading(false)
     }
-    // Fallback if bucket not found
-    return {
-      id: bucketId,
-      name: 'Unknown Bucket',
-      description: 'Bucket not found',
-      color: 'from-gray-500 to-slate-600',
-      preview: 'folder',
-      isOwned: true
+  }
+
+  // Show notification modal
+  const showNotification = (type, title, message, details = []) => {
+    setNotificationData({ type, title, message, details })
+    setShowNotificationModal(true)
+  }
+
+  // Handle file upload using the service
+  const handleFileUpload = async (uploadedFiles) => {
+    if (!uploadedFiles.length) return
+
+    try {
+      setUploading(true)
+      
+      // Upload files using the service (includes validation)
+      const uploadedFileModels = await fileService.uploadFiles(uploadedFiles, bucketId, user.uid)
+      
+      // Add to local state
+      setFiles(prev => [...uploadedFileModels, ...prev])
+      setShowUploadModal(false)
+      
+      // Show success notification
+      const totalSize = Array.from(uploadedFiles).reduce((total, file) => total + file.size, 0)
+      const uploadedSizeMB = (totalSize / (1024 * 1024)).toFixed(1)
+      
+      showNotification(
+        'success',
+        'Upload Successful!',
+        `Successfully uploaded ${uploadedFileModels.length} file${uploadedFileModels.length > 1 ? 's' : ''}.`,
+        [
+          `Added: ${uploadedSizeMB}MB`,
+          `Files uploaded: ${uploadedFileModels.map(f => f.name).join(', ')}`
+        ]
+      )
+    } catch (error) {
+      console.error('Upload error:', error)
+      showNotification(
+        'error',
+        'Upload Failed',
+        error.message,
+        []
+      )
+    } finally {
+      setUploading(false)
     }
   }
 
-  // Calculate days until expiration
-  const getDaysUntilExpiration = (createdAt) => {
-    const createdDate = new Date(createdAt)
-    const currentDate = new Date()
-    const expirationDate = new Date(createdDate.getTime() + (7 * 24 * 60 * 60 * 1000)) // 7 days from creation
-    const timeLeft = expirationDate.getTime() - currentDate.getTime()
-    const daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000))
-    return Math.max(0, daysLeft) // Don't return negative days
-  }
-
-  // Get expiration status for styling
-  const getExpirationStatus = (daysLeft) => {
-    if (daysLeft === 0) return { text: 'Expired', color: 'text-red-600 bg-red-100' }
-    if (daysLeft === 1) return { text: '1 day left', color: 'text-red-600 bg-red-100' }
-    if (daysLeft <= 2) return { text: `${daysLeft} days left`, color: 'text-orange-600 bg-orange-100' }
-    if (daysLeft <= 4) return { text: `${daysLeft} days left`, color: 'text-yellow-600 bg-yellow-100' }
-    return { text: `${daysLeft} days left`, color: 'text-green-600 bg-green-100' }
-  }
-
-  const bucket = getBucketData()
-  const daysLeft = getDaysUntilExpiration(bucket.createdAt || new Date().toISOString())
-  const expirationStatus = getExpirationStatus(daysLeft)
-
-  // File type icons
-  const getFileIcon = (type, className = "w-6 h-6") => {
-    const fileIcons = {
-      pdf: (
-        <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-          <path d="M8,2V6H16V2H8M16,8V22H8V8H16M18,8V6A2,2 0 0,0 16,4V0H8V4A2,2 0 0,0 6,6V8H4V10H6V22A2,2 0 0,0 8,24H16A2,2 0 0,0 18,22V10H20V8H18Z" />
-        </svg>
-      ),
-      jpg: (
-        <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-          <path d="M5,4H19A2,2 0 0,1 21,6V18A2,2 0 0,1 19,20H5A2,2 0 0,1 3,18V6A2,2 0 0,1 5,4M5,16L8.5,12.5L11,15.5L14.5,11L19,16H5Z" />
-        </svg>
-      ),
-      pptx: (
-        <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-          <path d="M5,3C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H5M5,5H19V19H5V5M7,7V9H17V7H7M7,11V13H17V11H7M7,15V17H14V15H7Z" />
-        </svg>
-      ),
-      default: (
-        <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-          <path d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z" />
-        </svg>
+  // Delete file using the service
+  const deleteFile = async (fileId) => {
+    try {
+      await fileService.deleteFile(fileId)
+      setFiles(prev => prev.filter(file => file.id !== fileId))
+      
+      showNotification(
+        'success',
+        'File Deleted',
+        'File has been successfully deleted.',
+        []
+      )
+    } catch (error) {
+      console.error('Delete error:', error)
+      showNotification(
+        'error',
+        'Delete Failed',
+        error.message,
+        []
       )
     }
-    return fileIcons[type] || fileIcons.default
   }
 
-  // Handle file upload
-  const handleFileUpload = (uploadedFiles) => {
-    const newFiles = Array.from(uploadedFiles).map(file => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: formatFileSize(file.size),
-      type: file.name.split('.').pop().toLowerCase(),
-      uploadedAt: new Date().toISOString(),
-      url: URL.createObjectURL(file),
-      file: file
-    }))
-    setFiles(prev => [...newFiles, ...prev])
-    setShowUploadModal(false)
+  // Rename file using the service
+  const renameFile = async () => {
+    if (!newFileName.trim() || !selectedFile) return
+
+    try {
+      const updatedFile = await fileService.renameFile(selectedFile.id, newFileName.trim())
+      
+      // Update local state
+      setFiles(prev => prev.map(file => 
+        file.id === selectedFile.id ? updatedFile : file
+      ))
+      
+      setShowRenameModal(false)
+      setSelectedFile(null)
+      setNewFileName('')
+      
+      showNotification(
+        'success',
+        'File Renamed',
+        `File renamed to "${newFileName.trim()}" successfully.`,
+        []
+      )
+    } catch (error) {
+      console.error('Rename error:', error)
+      showNotification(
+        'error',
+        'Rename Failed',
+        error.message,
+        []
+      )
+    }
   }
 
-  // Format file size
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  // Download file using the service
+  const downloadFile = async (file) => {
+    try {
+      const downloadURL = await fileService.downloadFile(file.id)
+      
+      // Create download link
+      const link = document.createElement('a')
+      link.href = downloadURL
+      link.download = file.name
+      link.target = '_blank'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      showNotification(
+        'success',
+        'Download Started',
+        `Download started for "${file.name}".`,
+        []
+      )
+    } catch (error) {
+      console.error('Download error:', error)
+      showNotification(
+        'error',
+        'Download Failed',
+        error.message,
+        []
+      )
+    }
+  }
+
+  // Start rename process
+  const startRename = (file) => {
+    setSelectedFile(file)
+    setNewFileName(file.name)
+    setShowRenameModal(true)
   }
 
   // Handle drag and drop
@@ -134,44 +226,107 @@ function BucketView() {
     }
   }
 
-  // Delete file
-  const deleteFile = (fileId) => {
-    setFiles(prev => prev.filter(file => file.id !== fileId))
-  }
-
-  // Rename file
-  const renameFile = () => {
-    if (newFileName.trim() && selectedFile) {
-      setFiles(prev => prev.map(file => 
-        file.id === selectedFile.id 
-          ? { ...file, name: newFileName.trim() }
-          : file
-      ))
-      setShowRenameModal(false)
-      setSelectedFile(null)
-      setNewFileName('')
+  // File type icons
+  const getFileIcon = (type, className = "w-6 h-6") => {
+    const fileIcons = {
+      pdf: (
+        <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8,2V6H16V2H8M16,8V22H8V8H16M18,8V6A2,2 0 0,0 16,4V0H8V4A2,2 0 0,0 6,6V8H4V10H6V22A2,2 0 0,0 8,24H16A2,2 0 0,0 18,22V10H20V8H18Z" />
+        </svg>
+      ),
+      jpg: (
+        <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+          <path d="M5,4H19A2,2 0 0,1 21,6V18A2,2 0 0,1 19,20H5A2,2 0 0,1 3,18V6A2,2 0 0,1 5,4M5,16L8.5,12.5L11,15.5L14.5,11L19,16H5Z" />
+        </svg>
+      ),
+      png: (
+        <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+          <path d="M5,4H19A2,2 0 0,1 21,6V18A2,2 0 0,1 19,20H5A2,2 0 0,1 3,18V6A2,2 0 0,1 5,4M5,16L8.5,12.5L11,15.5L14.5,11L19,16H5Z" />
+        </svg>
+      ),
+      default: (
+        <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+          <path d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z" />
+        </svg>
+      )
     }
+    return fileIcons[type] || fileIcons.default
   }
 
-  // Start rename process
-  const startRename = (file) => {
-    setSelectedFile(file)
-    setNewFileName(file.name)
-    setShowRenameModal(true)
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading bucket...</p>
+        </div>
+      </div>
+    )
   }
 
-  // Download file
-  const downloadFile = (file) => {
-    if (file.url) {
-      // For uploaded files with blob URLs
-      const link = document.createElement('a')
-      link.href = file.url
-      link.download = file.name
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
+  // Error state with retry option
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Error Loading Bucket
+          </h3>
+          <p className="text-gray-600 mb-6">{error}</p>
+          
+          <div className="space-y-3">
+            <button
+              onClick={loadBucketData}
+              disabled={loading}
+              className="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Retrying...
+                </>
+              ) : (
+                'Try Again'
+              )}
+            </button>
+            
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
+
+  if (!bucket) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Bucket Not Found</h2>
+          <p className="text-gray-600 mb-4">The requested bucket could not be found.</p>
+          <button
+            onClick={() => navigate('/home')}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go Back Home
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const daysLeft = getDaysUntilExpiration(bucket.createdAt)
+  const expirationStatus = getExpirationStatus(daysLeft)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -225,12 +380,22 @@ function BucketView() {
               
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                disabled={uploading}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                <span>Upload Files</span>
+                {uploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span>Upload Files</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -249,17 +414,29 @@ function BucketView() {
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">{files.length} files</h2>
                 <p className="text-sm text-gray-500">
-                  Total size: {files.reduce((total, file) => {
-                    const size = parseFloat(file.size.split(' ')[0])
-                    const unit = file.size.split(' ')[1]
-                    return total + (unit === 'MB' ? size : size / 1024)
-                  }, 0).toFixed(1)} MB
+                  Total size: {bucket.getFormattedSize ? bucket.getFormattedSize() : '0 Bytes'}
                 </p>
-                <p className={`text-sm font-semibold ${expirationStatus.color} px-2 py-1 rounded-lg`}>
+                <p className={`text-sm font-semibold px-2 py-1 rounded-lg inline-block ${expirationStatus.color}`}>
                   {expirationStatus.text}
                 </p>
               </div>
             </div>
+            
+            {bucket.pinCode && (
+              <div className="text-right">
+                <p className="text-sm text-gray-500 mb-1">Bucket PIN</p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(bucket.pinCode)
+                    showNotification('success', 'PIN Copied', 'Bucket PIN copied to clipboard', [])
+                  }}
+                  className="text-lg font-mono font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded border border-blue-200 transition-colors"
+                  title="Click to copy PIN"
+                >
+                  {bucket.pinCode}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -281,9 +458,10 @@ function BucketView() {
             <p className="text-gray-500 mb-6">Upload your first file to get started</p>
             <button
               onClick={() => setShowUploadModal(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={uploading}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Upload Files
+              {uploading ? 'Uploading...' : 'Upload Files'}
             </button>
           </div>
         ) : (
@@ -299,6 +477,9 @@ function BucketView() {
                     animate={{ opacity: 1, y: 0 }}
                   >
                     <div className="flex items-center justify-between mb-3">
+                      <div className="text-blue-600">
+                        {getFileIcon(file.type, "w-8 h-8")}
+                      </div>
                       <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => downloadFile(file)}
@@ -332,10 +513,15 @@ function BucketView() {
                     <h3 className="font-medium text-gray-900 truncate mb-1" title={file.name}>
                       {file.name}
                     </h3>
-                    <p className="text-sm text-gray-500 mb-2">{file.size}</p>
+                    <p className="text-sm text-gray-500 mb-2">{file.getFormattedSize()}</p>
                     <p className="text-xs text-gray-400">
                       {new Date(file.uploadedAt).toLocaleDateString()}
                     </p>
+                    {file.downloadCount > 0 && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Downloaded {file.downloadCount} time{file.downloadCount > 1 ? 's' : ''}
+                      </p>
+                    )}
                   </motion.div>
                 ))}
               </div>
@@ -346,7 +532,8 @@ function BucketView() {
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modified</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Downloads</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -362,10 +549,13 @@ function BucketView() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {file.size}
+                          {file.getFormattedSize()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(file.uploadedAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {file.downloadCount || 0}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
@@ -432,9 +622,10 @@ function BucketView() {
               <p className="text-gray-600 mb-4">Drag and drop files here, or</p>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={uploading}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Browse Files
+                {uploading ? 'Uploading...' : 'Browse Files'}
               </button>
               <input
                 ref={fileInputRef}
@@ -443,12 +634,16 @@ function BucketView() {
                 className="hidden"
                 onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               />
+              <div className="mt-4 text-xs text-gray-500">
+                <p>Maximum file size: 10MB</p>
+                <p>Maximum total storage: 30MB</p>
+              </div>
             </div>
           </motion.div>
         </div>
       )}
 
-      {/* Rename Modal */}
+      {/* ...existing modals... */}
       {showRenameModal && (
         <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
           <motion.div
@@ -494,6 +689,49 @@ function BucketView() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Rename
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Notification Modal */}
+      {showNotificationModal && (
+        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className={`text-xl font-bold ${notificationData.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                {notificationData.title}
+              </h2>
+              <button
+                onClick={() => setShowNotificationModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-gray-700">{notificationData.message}</p>
+              {notificationData.details.length > 0 && (
+                <ul className="list-disc list-inside text-gray-600 space-y-1">
+                  {notificationData.details.map((detail, index) => (
+                    <li key={index}>{detail}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowNotificationModal(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Close
               </button>
             </div>
           </motion.div>

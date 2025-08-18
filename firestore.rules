@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Buckets collection rules
+    match /buckets/{bucketId} {
+      // Allow read if user is the owner or is in the collaborators list
+      allow read: if request.auth != null && (
+        resource.data.ownerId == request.auth.uid ||
+        request.auth.token.email in resource.data.collaborators
+      );
+      
+      // Allow create if user is authenticated and is setting themselves as owner
+      allow create: if request.auth != null && 
+        request.auth.uid == resource.data.ownerId;
+      
+      // Allow update if user is the owner
+      allow update: if request.auth != null && 
+        resource.data.ownerId == request.auth.uid;
+      
+      // Allow delete if user is the owner
+      allow delete: if request.auth != null && 
+        resource.data.ownerId == request.auth.uid;
+    }
+    
+    // Files collection rules
+    match /files/{fileId} {
+      // Allow read/write if user has access to the parent bucket
+      allow read, write: if request.auth != null && (
+        exists(/databases/$(database)/documents/buckets/$(resource.data.bucketId)) &&
+        (get(/databases/$(database)/documents/buckets/$(resource.data.bucketId)).data.ownerId == request.auth.uid ||
+         request.auth.token.email in get(/databases/$(database)/documents/buckets/$(resource.data.bucketId)).data.collaborators)
+      );
+    }
+    
+    // Users collection rules (if you have one)
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

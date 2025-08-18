@@ -17,7 +17,7 @@ function LandingPage() {
           mouseControls: true,
           touchControls: true,
           gyroControls: false,
-          color1: 0x1e3a8a, // Blue
+          color1: 0x1e3a8a,
           minHeight: 200.00,
           minWidth: 200.00,
           scale: 1.00,

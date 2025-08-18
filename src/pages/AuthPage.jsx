@@ -1,23 +1,24 @@
-import { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { authService } from '../services/auth.service.js'
 import dropstoLogo from '/dropstoLogoNoText.png'
 
-function AuthPage() {
-  const [isLoading, setIsLoading] = useState(false)
-  const { signInWithGoogle, error } = useAuth()
+export default function AuthPage() {
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
   const handleGoogleSignIn = async () => {
     try {
-      setIsLoading(true)
-      await signInWithGoogle()
+      setLoading(true)
+      setError(null)
+      await authService.signInWithGoogle()
       navigate('/home')
     } catch (error) {
-      console.error('Sign in error:', error)
+      setError(error.message)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -56,12 +57,12 @@ function AuthPage() {
         {/* Google Sign In Button */}
         <motion.button
           onClick={handleGoogleSignIn}
-          disabled={isLoading}
+          disabled={loading}
           className="w-full bg-white hover:bg-gray-50 text-gray-900 font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
-          {isLoading ? (
+          {loading ? (
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></div>
           ) : (
             <>
@@ -106,5 +107,3 @@ function AuthPage() {
     </div>
   )
 }
-
-export default AuthPage

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { bucketService } from '../services/bucket.service'
 import copyIcon from '../assets/copy.svg'
 
 function HeroSection() {
@@ -52,17 +53,17 @@ function HeroSection() {
     setPinError('')
     
     try {
-      // Check PIN mappings in localStorage
-      const pinMappings = JSON.parse(localStorage.getItem('dropsto-pin-mappings') || '{}')
-      const bucketId = pinMappings[pin.trim()]
+      // Use bucket service to find bucket by PIN
+      const bucket = await bucketService.getBucketByPin(pin.trim())
       
-      if (bucketId) {
+      if (bucket) {
         // PIN is valid, navigate to bucket
-        navigate(`/bucket/${bucketId}`)
+        navigate(`/bucket/${bucket.id}`)
       } else {
         setPinError('Invalid PIN code. Please check and try again.')
       }
     } catch (error) {
+      console.error('Error retrieving bucket:', error)
       setPinError('Error accessing bucket. Please try again.')
     } finally {
       setIsLoading(false)
