@@ -535,6 +535,7 @@ function Homepage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
+                    onClick={() => navigate(`/bucket/${bucket.id}`)}
                   >
                     <div className="absolute top-4 right-4 flex items-center space-x-1">
                       {bucket.isOwned ? (
@@ -571,26 +572,18 @@ function Homepage() {
                       <div className="text-sm text-gray-500">
                         {bucket.fileCount || 0} files • {bucket.getFormattedSize ? bucket.getFormattedSize() : '0 Bytes'}
                       </div>
-                      <div className="flex items-center space-x-2">
-                        {bucket.pinCode && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigator.clipboard.writeText(bucket.pinCode)
-                            }}
-                            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded font-mono text-gray-600"
-                            title={`PIN: ${bucket.pinCode} (Click to copy)`}
-                          >
-                            PIN: {bucket.pinCode}
-                          </button>
-                        )}
-                        <button 
-                          onClick={() => navigate(`/bucket/${bucket.id}`)}
-                          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      {bucket.pinCode && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigator.clipboard.writeText(bucket.pinCode)
+                          }}
+                          className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded font-mono text-gray-600 transition-colors"
+                          title={`PIN: ${bucket.pinCode} (Click to copy)`}
                         >
-                          Open bucket
+                          PIN: {bucket.pinCode}
                         </button>
-                      </div>
+                      )}
                     </div>
                   </motion.div>
                 )

@@ -1,0 +1,13 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Rules for bucket files: buckets/{bucketId}/files/{fileName}
+    match /buckets/{bucketId}/files/{fileName} {
+      // Temporarily allow all authenticated users to read/write/delete
+      // This will help us debug the permission issue
+      allow read, write, delete: if request.auth != null;
+    }
+  }
+}

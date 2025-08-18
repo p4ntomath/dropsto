@@ -15,12 +15,12 @@ import {
   ref, 
   uploadBytes, 
   getDownloadURL, 
-  deleteObject 
+  deleteObject,
 } from 'firebase/storage'
 import { db, storage } from '../firebase/config.js'
 import { FileModel } from '../models/file.model.js'
-import { COLLECTIONS, STORAGE_LIMITS, ALLOWED_FILE_TYPES } from '../utils/constants.js'
-import { isValidFileType, calculateTotalStorage } from '../utils/helpers.js'
+import { COLLECTIONS, STORAGE_LIMITS } from '../utils/constants.js'
+import { calculateTotalStorage } from '../utils/helpers.js'
 import { bucketService } from './bucket.service.js'
 
 /**
@@ -42,7 +42,7 @@ export class FileService {
   async uploadFiles(files, bucketId, userId) {
     try {
       // Validate files
-      const validation = await this.validateFiles(files, bucketId)
+      const validation = await this.validateFiles(files, bucketId, userId)
       if (!validation.valid) {
         throw new Error(validation.error)
       }
@@ -82,12 +82,38 @@ export class FileService {
       // Create file model
       const fileModel = FileModel.fromFile(file, bucketId, userId)
       
-      // Generate storage path
-      const storagePath = `buckets/${bucketId}/files/${fileModel.id}-${file.name}`
+      // Generate storage path with better naming convention
+      const timestamp = Date.now()
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+      const storagePath = `buckets/${bucketId}/files/${timestamp}_${sanitizedFileName}`
       const storageRef = ref(storage, storagePath)
 
-      // Upload to Firebase Storage
-      const snapshot = await uploadBytes(storageRef, file)
+      // Upload to Firebase Storage with retry logic for CORS issues
+      let snapshot
+      let retries = 3
+      
+      while (retries > 0) {
+        try {
+          snapshot = await uploadBytes(storageRef, file, {
+            contentType: file.type,
+            customMetadata: {
+              originalName: file.name,
+              uploadedBy: userId,
+              bucketId: bucketId
+            }
+          })
+          break // Success, exit retry loop
+        } catch (uploadError) {
+          retries--
+          if (uploadError.code === 'storage/unknown' && retries > 0) {
+            // Wait a bit before retrying for CORS-related errors
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            continue
+          }
+          throw uploadError // Re-throw if not a retryable error or out of retries
+        }
+      }
+
       const downloadURL = await getDownloadURL(snapshot.ref)
 
       // Update file model with storage info
@@ -104,7 +130,17 @@ export class FileService {
       return fileModel
     } catch (error) {
       console.error('Error uploading single file:', error)
-      throw new Error(`Failed to upload ${file.name}`)
+      
+      // Provide more specific error messages
+      if (error.code === 'storage/unauthorized') {
+        throw new Error('You do not have permission to upload files to this bucket.')
+      } else if (error.code === 'storage/unknown' || error.message.includes('CORS')) {
+        throw new Error('Upload failed due to browser security restrictions. Please try again or contact support if the issue persists.')
+      } else if (error.code === 'storage/quota-exceeded') {
+        throw new Error('Storage quota exceeded. Please free up space or upgrade your plan.')
+      } else {
+        throw new Error(`Failed to upload ${file.name}: ${error.message}`)
+      }
     }
   }
 
@@ -313,46 +349,22 @@ export class FileService {
    * Validate files before upload
    * @param {FileList} files - Files to validate
    * @param {string} bucketId - Target bucket ID
+   * @param {string} userId - User ID uploading the files
    * @returns {Promise<object>} Validation result
    */
-  async validateFiles(files, bucketId) {
+  async validateFiles(files, bucketId, userId) {
     try {
       const fileArray = Array.from(files)
       
-      // Check individual file sizes
-      const oversizedFiles = fileArray.filter(
-        file => file.size > STORAGE_LIMITS.MAX_FILE_SIZE_MB * 1024 * 1024
-      )
-      
-      if (oversizedFiles.length > 0) {
-        return {
-          valid: false,
-          error: `Files exceed ${STORAGE_LIMITS.MAX_FILE_SIZE_MB}MB limit: ${oversizedFiles.map(f => f.name).join(', ')}`
-        }
-      }
-
-      // Check file types
-      const invalidFiles = fileArray.filter(
-        file => !isValidFileType(file.type, ALLOWED_FILE_TYPES)
-      )
-      
-      if (invalidFiles.length > 0) {
-        return {
-          valid: false,
-          error: `Unsupported file types: ${invalidFiles.map(f => f.name).join(', ')}`
-        }
-      }
-
-      // Check total storage limit
-      const currentFiles = await this.getBucketFiles(bucketId)
-      const currentStorage = calculateTotalStorage(currentFiles)
+      // Check total storage limit per user (across all buckets)
+      const userTotalStorage = await this.getUserTotalStorage(userId)
       const newFilesSize = fileArray.reduce((total, file) => total + file.size, 0)
-      const totalAfterUpload = (currentStorage + newFilesSize) / (1024 * 1024)
+      const totalAfterUpload = (userTotalStorage + newFilesSize) / (1024 * 1024)
 
       if (totalAfterUpload > STORAGE_LIMITS.MAX_TOTAL_STORAGE_MB) {
         return {
           valid: false,
-          error: `Upload would exceed ${STORAGE_LIMITS.MAX_TOTAL_STORAGE_MB}MB storage limit. Current: ${(currentStorage / (1024 * 1024)).toFixed(1)}MB, Adding: ${(newFilesSize / (1024 * 1024)).toFixed(1)}MB`
+          error: `Upload would exceed ${STORAGE_LIMITS.MAX_TOTAL_STORAGE_MB}MB user storage limit. Current: ${(userTotalStorage / (1024 * 1024)).toFixed(1)}MB, Adding: ${(newFilesSize / (1024 * 1024)).toFixed(1)}MB`
         }
       }
 
@@ -363,6 +375,32 @@ export class FileService {
         valid: false,
         error: 'Failed to validate files. Please try again.'
       }
+    }
+  }
+
+  /**
+   * Get total storage used by a user across all their buckets
+   * @param {string} userId - User ID
+   * @returns {Promise<number>} Total storage in bytes
+   */
+  async getUserTotalStorage(userId) {
+    try {
+      // Get all buckets owned by the user
+      const userBuckets = await bucketService.getUserBuckets(userId)
+      
+      // Calculate total storage across all buckets
+      let totalStorage = 0
+      
+      for (const bucket of userBuckets) {
+        const bucketFiles = await this.getBucketFiles(bucket.id)
+        const bucketStorage = calculateTotalStorage(bucketFiles)
+        totalStorage += bucketStorage
+      }
+      
+      return totalStorage
+    } catch (error) {
+      console.error('Error calculating user total storage:', error)
+      throw error
     }
   }
 

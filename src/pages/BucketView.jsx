@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
 import { fileService } from '../services/file.service'
-import { getDaysUntilExpiration, getExpirationStatus, formatFileSize } from '../utils/helpers'
+import { getDaysUntilExpiration, getExpirationStatus } from '../utils/helpers'
 import dropstoLogo from '/dropstoLogoNoText.png'
 import potIcon from '../assets/potIcon.png'
 
@@ -34,6 +34,8 @@ function BucketView() {
   const [newFileName, setNewFileName] = useState('')
   const [dragActive, setDragActive] = useState(false)
   const [viewMode, setViewMode] = useState('grid')
+  const [showDeleteBucketModal, setShowDeleteBucketModal] = useState(false)
+  const [deletingBucket, setDeletingBucket] = useState(false)
 
   // Load bucket and files on component mount
   useEffect(() => {
@@ -81,23 +83,34 @@ function BucketView() {
       // Upload files using the service (includes validation)
       const uploadedFileModels = await fileService.uploadFiles(uploadedFiles, bucketId, user.uid)
       
-      // Add to local state
-      setFiles(prev => [...uploadedFileModels, ...prev])
-      setShowUploadModal(false)
-      
-      // Show success notification
-      const totalSize = Array.from(uploadedFiles).reduce((total, file) => total + file.size, 0)
-      const uploadedSizeMB = (totalSize / (1024 * 1024)).toFixed(1)
-      
-      showNotification(
-        'success',
-        'Upload Successful!',
-        `Successfully uploaded ${uploadedFileModels.length} file${uploadedFileModels.length > 1 ? 's' : ''}.`,
-        [
-          `Added: ${uploadedSizeMB}MB`,
-          `Files uploaded: ${uploadedFileModels.map(f => f.name).join(', ')}`
-        ]
-      )
+      // Only show success if files were actually uploaded
+      if (uploadedFileModels.length > 0) {
+        // Add to local state
+        setFiles(prev => [...uploadedFileModels, ...prev])
+        setShowUploadModal(false)
+        
+        // Show success notification
+        const totalSize = Array.from(uploadedFiles).reduce((total, file) => total + file.size, 0)
+        const uploadedSizeMB = (totalSize / (1024 * 1024)).toFixed(1)
+        
+        showNotification(
+          'success',
+          'Upload Successful!',
+          `Successfully uploaded ${uploadedFileModels.length} file${uploadedFileModels.length > 1 ? 's' : ''}.`,
+          [
+            `Added: ${uploadedSizeMB}MB`,
+            `Files uploaded: ${uploadedFileModels.map(f => f.name).join(', ')}`
+          ]
+        )
+      } else {
+        // Show error if no files were uploaded
+        showNotification(
+          'error',
+          'Upload Failed',
+          'No files were successfully uploaded. Please check the errors and try again.',
+          []
+        )
+      }
     } catch (error) {
       console.error('Upload error:', error)
       showNotification(
@@ -203,6 +216,48 @@ function BucketView() {
     setSelectedFile(file)
     setNewFileName(file.name)
     setShowRenameModal(true)
+  }
+
+  // Delete bucket function
+  const deleteBucket = async () => {
+    if (!bucket || !bucket.isOwned) {
+      showNotification('error', 'Permission Denied', 'You can only delete buckets you own.', [])
+      return
+    }
+
+    try {
+      setDeletingBucket(true)
+      
+      // Delete all files in the bucket first
+      await fileService.deleteAllBucketFiles(bucketId, true)
+      
+      // Delete the bucket
+      await bucketService.deleteBucket(bucketId)
+      
+      showNotification(
+        'success',
+        'Bucket Deleted',
+        `Bucket "${bucket.name}" has been permanently deleted along with all its files.`,
+        []
+      )
+      
+      // Navigate back to homepage after a short delay
+      setTimeout(() => {
+        navigate('/home')
+      }, 2000)
+      
+    } catch (error) {
+      console.error('Delete bucket error:', error)
+      showNotification(
+        'error',
+        'Delete Failed',
+        error.message || 'Failed to delete bucket. Please try again.',
+        []
+      )
+    } finally {
+      setDeletingBucket(false)
+      setShowDeleteBucketModal(false)
+    }
   }
 
   // Handle drag and drop
@@ -377,6 +432,20 @@ function BucketView() {
                   </svg>
                 </button>
               </div>
+              
+              {/* Delete Bucket Button - Only show if user owns the bucket */}
+              {bucket && bucket.isOwned && (
+                <button
+                  onClick={() => setShowDeleteBucketModal(true)}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                  title="Delete Bucket"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span>Delete</span>
+                </button>
+              )}
               
               <button
                 onClick={() => setShowUploadModal(true)}
@@ -635,15 +704,14 @@ function BucketView() {
                 onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               />
               <div className="mt-4 text-xs text-gray-500">
-                <p>Maximum file size: 10MB</p>
-                <p>Maximum total storage: 30MB</p>
+                <p>Maximum total storage: 30MB per user</p>
               </div>
             </div>
           </motion.div>
         </div>
       )}
 
-      {/* ...existing modals... */}
+      {/* Rename Modal */}
       {showRenameModal && (
         <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
           <motion.div
@@ -732,6 +800,88 @@ function BucketView() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Bucket Confirmation Modal */}
+      {showDeleteBucketModal && (
+        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-red-600">Delete Bucket</h2>
+              <button
+                onClick={() => setShowDeleteBucketModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+                disabled={deletingBucket}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 p-4 bg-red-50 rounded-lg border border-red-200">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-red-800">Warning: This action cannot be undone</h3>
+                  <p className="text-sm text-red-700">All files in this bucket will be permanently deleted</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-gray-700 mb-4">
+                  Are you sure you want to delete the bucket <strong>"{bucket?.name}"</strong>?
+                </p>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-sm text-gray-600">
+                    • <strong>{files.length}</strong> file{files.length !== 1 ? 's' : ''} will be permanently deleted
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    • Total storage: <strong>{bucket?.getFormattedSize ? bucket.getFormattedSize() : '0 Bytes'}</strong>
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    • PIN: <strong>{bucket?.pinCode}</strong> will become invalid
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowDeleteBucketModal(false)}
+                disabled={deletingBucket}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteBucket}
+                disabled={deletingBucket}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {deletingBucket ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Delete Bucket</span>
+                  </>
+                )}
               </button>
             </div>
           </motion.div>
