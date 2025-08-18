@@ -41,8 +41,14 @@ export const useBuckets = () => {
 
       // Combine and sort buckets
       const allBuckets = [
-        ...ownedBuckets.map(bucket => ({ ...bucket, isOwned: true })),
-        ...sharedBuckets.map(bucket => ({ ...bucket, isOwned: false }))
+        ...ownedBuckets.map(bucket => {
+          bucket.isOwned = true
+          return bucket // Keep as Bucket instance
+        }),
+        ...sharedBuckets.map(bucket => {
+          bucket.isOwned = false
+          return bucket // Keep as Bucket instance
+        })
       ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
       setBuckets(allBuckets)
@@ -91,7 +97,8 @@ export const useBuckets = () => {
       }, user.uid)
 
       // Add to local state
-      setBuckets(prev => [{ ...newBucket, isOwned: true }, ...prev])
+      newBucket.isOwned = true
+      setBuckets(prev => [newBucket, ...prev])
       
       return newBucket
     } catch (err) {
@@ -120,9 +127,9 @@ export const useBuckets = () => {
     try {
       const updatedBucket = await bucketService.updateBucket(bucketId, updates)
       
-      // Update local state
+      // Update local state - preserve the Bucket instance
       setBuckets(prev => prev.map(bucket => 
-        bucket.id === bucketId ? { ...updatedBucket, isOwned: bucket.isOwned } : bucket
+        bucket.id === bucketId ? updatedBucket : bucket
       ))
       
       return updatedBucket
@@ -132,6 +139,13 @@ export const useBuckets = () => {
       throw err
     }
   }, [])
+
+  // Refresh buckets data (useful for getting updated storage info)
+  const refreshBuckets = useCallback(async () => {
+    // Clear cache to force fresh data
+    bucketService.clearCache()
+    await loadBuckets()
+  }, [loadBuckets])
 
   // Get bucket by PIN
   const getBucketByPin = useCallback(async (pinCode) => {
@@ -160,6 +174,19 @@ export const useBuckets = () => {
     loadBuckets()
   }, [loadBuckets])
 
+  // Refresh buckets data when returning to homepage (to get updated storage info)
+  useEffect(() => {
+    const handleFocus = () => {
+      // Only refresh if we have buckets and user is authenticated
+      if (user?.uid && buckets.length > 0) {
+        refreshBuckets()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [user?.uid, buckets.length, refreshBuckets])
+
   // Clear error after 5 seconds
   useEffect(() => {
     if (error) {
@@ -178,7 +205,7 @@ export const useBuckets = () => {
     getBucketByPin,
     getOwnedBuckets,
     getSharedBuckets,
-    refreshBuckets: loadBuckets,
+    refreshBuckets,
     clearError: () => setError(null),
     retryLoadBuckets
   }

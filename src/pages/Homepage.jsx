@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
@@ -20,7 +20,8 @@ function Homepage() {
     deleteBucket: deleteBucketService,
     getOwnedBuckets,
     getSharedBuckets,
-    clearError
+    clearError,
+    refreshBuckets
   } = useBuckets()
 
   const [activeTab, setActiveTab] = useState('Recent')
@@ -142,6 +143,14 @@ function Homepage() {
   const totalStorageUsed = buckets.reduce((total, bucket) => total + (bucket.storageUsed || 0), 0)
   const totalStorageUsedMB = totalStorageUsed / (1024 * 1024)
   const storagePercentage = Math.round((totalStorageUsedMB / 30) * 100)
+
+  // Refresh buckets when component mounts or user navigates back to homepage
+  useEffect(() => {
+    if (user?.uid && buckets.length > 0) {
+      // Refresh bucket data to get updated storage info
+      refreshBuckets()
+    }
+  }, [user?.uid, refreshBuckets])
 
   // ...existing code... (getIcon function remains the same)
   const getIcon = (iconName, className = "w-5 h-5") => {
@@ -689,7 +698,7 @@ function Homepage() {
                     
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-gray-500">
-                        {bucket.fileCount || 0} files • {bucket.getFormattedSize ? bucket.getFormattedSize() : '0 Bytes'}
+                        {bucket.fileCount || 0} files • {bucket.storageUsed ? bucket.getFormattedSize() : '0 Bytes'}
                       </div>
                       {bucket.pinCode && (
                         <button

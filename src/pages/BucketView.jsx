@@ -89,6 +89,9 @@ function BucketView() {
         setFiles(prev => [...uploadedFileModels, ...prev])
         setShowUploadModal(false)
         
+        // Refresh bucket data to get updated storage info
+        await refreshBucketData()
+        
         // Show success notification
         const totalSize = Array.from(uploadedFiles).reduce((total, file) => total + file.size, 0)
         const uploadedSizeMB = (totalSize / (1024 * 1024)).toFixed(1)
@@ -130,6 +133,9 @@ function BucketView() {
       await fileService.deleteFile(fileId)
       setFiles(prev => prev.filter(file => file.id !== fileId))
       
+      // Refresh bucket data to get updated storage info
+      await refreshBucketData()
+      
       showNotification(
         'success',
         'File Deleted',
@@ -144,6 +150,21 @@ function BucketView() {
         error.message,
         []
       )
+    }
+  }
+
+  // Refresh bucket data helper function
+  const refreshBucketData = async () => {
+    try {
+      // Clear cache for this specific bucket to force fresh data
+      bucketService.buckets.delete(bucketId)
+      
+      const updatedBucket = await bucketService.getBucketById(bucketId)
+      if (updatedBucket) {
+        setBucket(updatedBucket)
+      }
+    } catch (error) {
+      console.error('Error refreshing bucket data:', error)
     }
   }
 
@@ -355,7 +376,7 @@ function BucketView() {
               onClick={() => navigate('/home')}
               className="w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
             >
-              Back to Dashboard
+              Back to Home
             </button>
           </div>
         </div>
@@ -546,9 +567,6 @@ function BucketView() {
                     animate={{ opacity: 1, y: 0 }}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <div className="text-blue-600">
-                        {getFileIcon(file.type, "w-6 h-6 sm:w-8 sm:h-8")}
-                      </div>
                       <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => downloadFile(file)}
