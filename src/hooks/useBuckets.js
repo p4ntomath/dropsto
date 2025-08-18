@@ -174,19 +174,6 @@ export const useBuckets = () => {
     loadBuckets()
   }, [loadBuckets])
 
-  // Refresh buckets data when returning to homepage (to get updated storage info)
-  useEffect(() => {
-    const handleFocus = () => {
-      // Only refresh if we have buckets and user is authenticated
-      if (user?.uid && buckets.length > 0) {
-        refreshBuckets()
-      }
-    }
-
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
-  }, [user?.uid, buckets.length, refreshBuckets])
-
   // Clear error after 5 seconds
   useEffect(() => {
     if (error) {
