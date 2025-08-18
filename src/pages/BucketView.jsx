@@ -297,7 +297,7 @@ function BucketView() {
             </button>
             
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/home')}
               className="w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
             >
               Back to Dashboard

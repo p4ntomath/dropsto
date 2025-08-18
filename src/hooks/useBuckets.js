@@ -87,7 +87,7 @@ export const useBuckets = () => {
         ...bucketData,
         ownerEmail: user.email,
         owner: user.displayName || user.email,
-        collaborators: [user.email]
+        collaborators: [] // Don't add owner to collaborators array
       }, user.uid)
 
       // Add to local state

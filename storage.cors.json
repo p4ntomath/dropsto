@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["http://localhost:5173", "http://127.0.0.1:5173", "https://dropsto-123.web.app", "https://dropsto-123.firebaseapp.com"],
+    "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Authorization", "Content-Length", "User-Agent", "X-Requested-With"]
+  }
+]
