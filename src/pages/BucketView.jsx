@@ -388,8 +388,8 @@ function BucketView() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between h-auto sm:h-16 py-4 sm:py-0 space-y-4 sm:space-y-0">
+            <div className="flex items-center space-x-4 w-full sm:w-auto">
               <button
                 onClick={() => navigate('/home')}
                 className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
@@ -399,16 +399,16 @@ function BucketView() {
                 </svg>
                 <span>Back</span>
               </button>
-              <div className="flex items-center space-x-3">
-                <img src={dropstoLogo} alt="DropSto Logo" className="w-8 h-8 object-contain" />
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">{bucket.name}</h1>
-                  <p className="text-sm text-gray-500">{bucket.description}</p>
+              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                <img src={dropstoLogo} alt="DropSto Logo" className="w-6 h-6 sm:w-8 sm:h-8 object-contain flex-shrink-0" />
+                <div className="min-w-0">
+                  <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">{bucket.name}</h1>
+                  <p className="text-xs sm:text-sm text-gray-500 truncate">{bucket.description}</p>
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
               {/* View Toggle */}
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
                 <button
@@ -437,20 +437,20 @@ function BucketView() {
               {bucket && bucket.isOwned && (
                 <button
                   onClick={() => setShowDeleteBucketModal(true)}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                  className="bg-red-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2 text-sm"
                   title="Delete Bucket"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  <span>Delete</span>
+                  <span className="hidden sm:inline">Delete</span>
                 </button>
               )}
               
               <button
                 onClick={() => setShowUploadModal(true)}
                 disabled={uploading}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 {uploading ? (
                   <>
@@ -459,10 +459,10 @@ function BucketView() {
                   </>
                 ) : (
                   <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
-                    <span>Upload Files</span>
+                    <span>Upload</span>
                   </>
                 )}
               </button>
@@ -472,34 +472,34 @@ function BucketView() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
         {/* Bucket Stats */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-          <div className="flex items-center justify-between">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 lg:p-6 mb-6 lg:mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             <div className="flex items-center space-x-4">
-              <div className={`w-16 h-16 bg-gradient-to-r ${bucket.color} rounded-lg flex items-center justify-center`}>
-                <img src={potIcon} alt="Bucket" className="w-8 h-8" />
+              <div className={`w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-r ${bucket.color} rounded-lg flex items-center justify-center`}>
+                <img src={potIcon} alt="Bucket" className="w-6 h-6 lg:w-8 lg:h-8" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">{files.length} files</h2>
+                <h2 className="text-base lg:text-lg font-semibold text-gray-900">{files.length} files</h2>
                 <p className="text-sm text-gray-500">
                   Total size: {bucket.getFormattedSize ? bucket.getFormattedSize() : '0 Bytes'}
                 </p>
-                <p className={`text-sm font-semibold px-2 py-1 rounded-lg inline-block ${expirationStatus.color}`}>
+                <p className={`text-xs lg:text-sm font-semibold px-2 py-1 rounded-lg inline-block ${expirationStatus.color} mt-1`}>
                   {expirationStatus.text}
                 </p>
               </div>
             </div>
             
             {bucket.pinCode && (
-              <div className="text-right">
+              <div className="text-left lg:text-right">
                 <p className="text-sm text-gray-500 mb-1">Bucket PIN</p>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(bucket.pinCode)
                     showNotification('success', 'PIN Copied', 'Bucket PIN copied to clipboard', [])
                   }}
-                  className="text-lg font-mono font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded border border-blue-200 transition-colors"
+                  className="text-base lg:text-lg font-mono font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded border border-blue-200 transition-colors"
                   title="Click to copy PIN"
                 >
                   {bucket.pinCode}
@@ -512,7 +512,7 @@ function BucketView() {
         {/* Files Section */}
         {files.length === 0 ? (
           <div 
-            className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+            className={`border-2 border-dashed rounded-lg p-8 lg:p-12 text-center transition-colors ${
               dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
             }`}
             onDragEnter={handleDrag}
@@ -520,15 +520,15 @@ function BucketView() {
             onDragOver={handleDrag}
             onDrop={handleDrop}
           >
-            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-12 h-12 lg:w-16 lg:h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No files yet</h3>
-            <p className="text-gray-500 mb-6">Upload your first file to get started</p>
+            <h3 className="text-base lg:text-lg font-semibold text-gray-900 mb-2">No files yet</h3>
+            <p className="text-sm lg:text-base text-gray-500 mb-6">Upload your first file to get started</p>
             <button
               onClick={() => setShowUploadModal(true)}
               disabled={uploading}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
             >
               {uploading ? 'Uploading...' : 'Upload Files'}
             </button>
@@ -537,7 +537,7 @@ function BucketView() {
           <div>
             {/* Files Grid/List */}
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
                 {files.map((file) => (
                   <motion.div
                     key={file.id}
@@ -547,7 +547,7 @@ function BucketView() {
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-blue-600">
-                        {getFileIcon(file.type, "w-8 h-8")}
+                        {getFileIcon(file.type, "w-6 h-6 sm:w-8 sm:h-8")}
                       </div>
                       <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
@@ -579,10 +579,10 @@ function BucketView() {
                         </button>
                       </div>
                     </div>
-                    <h3 className="font-medium text-gray-900 truncate mb-1" title={file.name}>
+                    <h3 className="font-medium text-gray-900 truncate mb-1 text-sm sm:text-base" title={file.name}>
                       {file.name}
                     </h3>
-                    <p className="text-sm text-gray-500 mb-2">{file.getFormattedSize()}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mb-2">{file.getFormattedSize()}</p>
                     <p className="text-xs text-gray-400">
                       {new Date(file.uploadedAt).toLocaleDateString()}
                     </p>
@@ -596,69 +596,72 @@ function BucketView() {
               </div>
             ) : (
               <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Downloads</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {files.map((file) => (
-                      <tr key={file.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-3">
-                            <div className="text-blue-600">
-                              {getFileIcon(file.type, "w-6 h-6")}
-                            </div>
-                            <span className="text-sm font-medium text-gray-900">{file.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {file.getFormattedSize()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(file.uploadedAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {file.downloadCount || 0}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex items-center justify-end space-x-2">
-                            <button
-                              onClick={() => downloadFile(file)}
-                              className="text-green-600 hover:text-green-700"
-                            >
-                              Download
-                            </button>
-                            <button
-                              onClick={() => startRename(file)}
-                              className="text-blue-600 hover:text-blue-700"
-                            >
-                              Rename
-                            </button>
-                            <button
-                              onClick={() => deleteFile(file.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
+                {/* Mobile-friendly table with horizontal scroll */}
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[600px]">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
+                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Downloads</th>
+                        <th className="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {files.map((file) => (
+                        <tr key={file.id} className="hover:bg-gray-50">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-3">
+                              <div className="text-blue-600">
+                                {getFileIcon(file.type, "w-5 h-5 lg:w-6 lg:h-6")}
+                              </div>
+                              <span className="text-sm font-medium text-gray-900 truncate max-w-[150px] lg:max-w-none">{file.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {file.getFormattedSize()}
+                          </td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(file.uploadedAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {file.downloadCount || 0}
+                          </td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center justify-end space-x-1 lg:space-x-2">
+                              <button
+                                onClick={() => downloadFile(file)}
+                                className="text-green-600 hover:text-green-700 px-2 py-1 text-xs lg:text-sm"
+                              >
+                                Download
+                              </button>
+                              <button
+                                onClick={() => startRename(file)}
+                                className="text-blue-600 hover:text-blue-700 px-2 py-1 text-xs lg:text-sm"
+                              >
+                                Rename
+                              </button>
+                              <button
+                                onClick={() => deleteFile(file.id)}
+                                className="text-red-600 hover:text-red-700 px-2 py-1 text-xs lg:text-sm"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
         )}
       </main>
 
-      {/* Upload Modal */}
+      {/* Modals */}
       {showUploadModal && (
         <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
           <motion.div
@@ -711,7 +714,6 @@ function BucketView() {
         </div>
       )}
 
-      {/* Rename Modal */}
       {showRenameModal && (
         <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
           <motion.div
@@ -763,7 +765,6 @@ function BucketView() {
         </div>
       )}
 
-      {/* Notification Modal */}
       {showNotificationModal && (
         <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
           <motion.div
@@ -806,7 +807,6 @@ function BucketView() {
         </div>
       )}
 
-      {/* Delete Bucket Confirmation Modal */}
       {showDeleteBucketModal && (
         <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
           <motion.div
