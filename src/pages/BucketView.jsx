@@ -574,7 +574,7 @@ function BucketView() {
                     animate={{ opacity: 1, y: 0 }}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center space-x-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => downloadFile(file)}
                           className="p-1 text-gray-400 hover:text-green-600 rounded"
