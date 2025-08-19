@@ -119,26 +119,6 @@ function Homepage() {
 
   const tabs = ['Recent', 'Favorites', 'Shared']
 
-  const quickActions = [
-    { name: 'Create new bucket', icon: 'pot', action: () => setShowCreateModal(true) },
-    { 
-      name: 'Upload files', 
-      icon: 'upload', 
-      action: () => {
-        if (buckets.length === 0) {
-          alert('Please create a bucket first before uploading files.')
-          return
-        }
-        const mostRecentBucket = buckets.find(b => b.isOwned) || buckets[0]
-        if (mostRecentBucket) {
-          navigate(`/bucket/${mostRecentBucket.id}`)
-        }
-      }
-    },
-    { name: 'Share bucket', icon: 'link', action: () => {} },
-    { name: 'Import bucket', icon: 'folder', action: () => {} }
-  ]
-
   // Calculate total storage used
   const totalStorageUsed = buckets.reduce((total, bucket) => total + (bucket.storageUsed || 0), 0)
   const totalStorageUsedMB = totalStorageUsed / (1024 * 1024)
@@ -343,18 +323,16 @@ function Homepage() {
                   <img 
                     src={user.photoURL} 
                     alt="Profile" 
-                    className="w-10 h-10 rounded-full"
+                    className="w-10 h-10 rounded-full object-cover"
+                    onError={(e) => {
+                      // Fallback to default avatar if image fails to load
+                      e.target.style.display = 'none'
+                      e.target.nextSibling.style.display = 'flex'
+                    }}
                   />
-                ) : (
-                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                    {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {user?.displayName || 'User'}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                ) : null}
+                <div className={`w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md ${user?.photoURL ? 'hidden' : 'flex'}`}>
+                  {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                 </div>
               </div>
               <button
@@ -425,13 +403,17 @@ function Homepage() {
               <img 
                 src={user.photoURL} 
                 alt="Profile" 
-                className="w-10 h-10 rounded-full"
+                className="w-10 h-10 rounded-full object-cover"
+                onError={(e) => {
+                  // Fallback to default avatar if image fails to load
+                  e.target.style.display = 'none'
+                  e.target.nextSibling.style.display = 'flex'
+                }}
               />
-            ) : (
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
-              </div>
-            )}
+            ) : null}
+            <div className={`w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md ${user?.photoURL ? 'hidden' : 'flex'}`}>
+              {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
                 {user?.displayName || 'User'}
@@ -481,13 +463,17 @@ function Homepage() {
                     <img 
                       src={user.photoURL} 
                       alt="Profile" 
-                      className="w-8 h-8 rounded-full"
+                      className="w-8 h-8 rounded-full object-cover"
+                      onError={(e) => {
+                        // Fallback to default avatar if image fails to load
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
                     />
-                  ) : (
-                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                      {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                    </div>
-                  )}
+                  ) : null}
+                  <div className={`w-8 h-8 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md ${user?.photoURL ? 'hidden' : 'flex'}`}>
+                    {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
                   <span className="font-medium text-gray-900">{user?.displayName || user?.email}</span>
                   <span className="text-gray-400">{getIcon('settings')}</span>
                 </button>
@@ -510,22 +496,6 @@ function Homepage() {
             </div>
           </div>
         </header>
-
-        {/* Quick Actions */}
-        <div className="px-4 lg:px-8 py-6 bg-white border-b border-gray-200">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-            {quickActions.map((action, index) => (
-              <button
-                key={index}
-                onClick={action.action}
-                className="flex flex-col items-center justify-center p-4 lg:p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group"
-              >
-                <span className="text-xl lg:text-2xl mb-2 group-hover:scale-110 transition-transform">{getIcon(action.icon, "w-6 h-6 lg:w-8 lg:h-8")}</span>
-                <span className="text-xs lg:text-sm font-medium text-gray-600 group-hover:text-blue-600 text-center">{action.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Content Area */}
         <div className="flex-1 px-4 lg:px-8 py-6">
