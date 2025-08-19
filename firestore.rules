@@ -6,13 +6,16 @@ service cloud.firestore {
     // Buckets collection rules
     match /buckets/{bucketId} {
       allow read: if true;
-
       allow create: if true;
-
-
+      
+      // Allow authenticated users to update their own buckets
       allow update: if request.auth != null &&
         resource.data.ownerId == request.auth.uid;
-
+      
+      // Allow unauthenticated users (PIN users) to update bucket stats (fileCount, storageUsed)
+      // Only allow updating specific fields for PIN users
+      allow update: if request.auth == null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fileCount', 'storageUsed', 'updatedAt']);
 
       allow delete: if request.auth != null &&
         resource.data.ownerId == request.auth.uid;
@@ -20,10 +23,7 @@ service cloud.firestore {
 
     // Files collection rules
     match /files/{fileId} {
-
       allow read, create: if true;
-
-
       allow update, delete: if request.auth != null;
     }
 
