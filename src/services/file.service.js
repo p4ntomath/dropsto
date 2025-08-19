@@ -376,16 +376,33 @@ export class FileService {
   async validateFiles(files, bucketId, userId) {
     try {
       const fileArray = Array.from(files)
-      
-      // Check total storage limit per user (across all buckets)
-      const userTotalStorage = await this.getUserTotalStorage(userId)
       const newFilesSize = fileArray.reduce((total, file) => total + file.size, 0)
+      
+      // For PIN users, check the bucket owner's storage limit instead of the uploader's
+      let userToCheck = userId
+      let userType = 'authenticated user'
+      
+      if (userId === 'pin-user') {
+        // Get bucket to find the owner
+        const bucket = await bucketService.getBucketById(bucketId)
+        if (!bucket) {
+          return {
+            valid: false,
+            error: 'Bucket not found.'
+          }
+        }
+        userToCheck = bucket.ownerId
+        userType = 'bucket owner'
+      }
+      
+      // Check total storage limit for the appropriate user
+      const userTotalStorage = await this.getUserTotalStorage(userToCheck)
       const totalAfterUpload = (userTotalStorage + newFilesSize) / (1024 * 1024)
 
       if (totalAfterUpload > STORAGE_LIMITS.MAX_TOTAL_STORAGE_MB) {
         return {
           valid: false,
-          error: `Upload would exceed ${STORAGE_LIMITS.MAX_TOTAL_STORAGE_MB}MB user storage limit. Current: ${(userTotalStorage / (1024 * 1024)).toFixed(1)}MB, Adding: ${(newFilesSize / (1024 * 1024)).toFixed(1)}MB`
+          error: `Upload would exceed ${STORAGE_LIMITS.MAX_TOTAL_STORAGE_MB}MB ${userType} storage limit. Current: ${(userTotalStorage / (1024 * 1024)).toFixed(1)}MB, Adding: ${(newFilesSize / (1024 * 1024)).toFixed(1)}MB`
         }
       }
 

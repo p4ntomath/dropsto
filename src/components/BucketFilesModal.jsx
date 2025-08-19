@@ -52,7 +52,8 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
       await loadFiles() // Refresh file list
     } catch (error) {
       console.error('Error uploading files:', error)
-      setError('Failed to upload files. Please try again.')
+      // Show the actual error message from the service instead of generic message
+      setError(error.message || 'Failed to upload files. Please try again.')
     } finally {
       setIsUploading(false)
     }
