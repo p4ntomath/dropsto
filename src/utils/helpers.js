@@ -105,6 +105,42 @@ export const isValidFileType = (fileType, allowedTypes) => {
 }
 
 /**
+ * Format date in human readable format
+ * @param {string} dateString - ISO date string
+ * @returns {string} Formatted date string
+ */
+export const formatDate = (dateString) => {
+  if (!dateString) return 'Unknown'
+  
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInMs = now.getTime() - date.getTime()
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
+  const diffInMinutes = Math.floor(diffInMs / (1000 * 60))
+  
+  if (diffInDays === 0) {
+    if (diffInHours === 0) {
+      if (diffInMinutes === 0) {
+        return 'Just now'
+      }
+      return `${diffInMinutes} minute${diffInMinutes === 1 ? '' : 's'} ago`
+    }
+    return `${diffInHours} hour${diffInHours === 1 ? '' : 's'} ago`
+  } else if (diffInDays === 1) {
+    return 'Yesterday'
+  } else if (diffInDays < 7) {
+    return `${diffInDays} days ago`
+  } else {
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+}
+
+/**
  * Calculate total storage usage in bytes
  * @param {Array} files - Array of file objects
  * @returns {number} Total storage in bytes
