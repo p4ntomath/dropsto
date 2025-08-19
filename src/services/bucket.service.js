@@ -15,7 +15,7 @@ import { getAuth } from 'firebase/auth'
 import { db } from '../firebase/config.js'
 import { Bucket } from '../models/bucket.model.js'
 import { COLLECTIONS, STORAGE_KEYS } from '../utils/constants.js'
-import { generatePinCode } from '../utils/helpers.js'
+import { generatePinCode, shouldAutoDeleteBucket } from '../utils/helpers.js'
 
 /**
  * Bucket Service - Handles all bucket-related operations
@@ -87,15 +87,24 @@ export class BucketService {
   }
 
   /**
-   * Get bucket by ID
+   * Get bucket by ID with auto-deletion check
    * @param {string} bucketId - Bucket ID
-   * @returns {Promise<Bucket|null>} Bucket or null if not found
+   * @returns {Promise<Bucket|null>} Bucket or null if not found/expired
    */
   async getBucketById(bucketId) {
     try {
       // Check cache first
       if (this.buckets.has(bucketId)) {
-        return this.buckets.get(bucketId)
+        const bucket = this.buckets.get(bucketId)
+        
+        // Check if bucket should be auto-deleted
+        if (shouldAutoDeleteBucket(bucket.createdAt)) {
+          console.log(`Auto-deleting expired bucket: ${bucket.name} (${bucket.id})`)
+          await this.autoDeleteExpiredBucket(bucketId)
+          return null // Bucket was auto-deleted
+        }
+        
+        return bucket
       }
 
       // Fetch from Firestore
@@ -103,7 +112,16 @@ export class BucketService {
       const docSnap = await getDoc(docRef)
 
       if (docSnap.exists()) {
-        const bucket = Bucket.fromFirestore(docSnap.id, docSnap.data())
+        const bucketData = docSnap.data()
+        
+        // Check if bucket should be auto-deleted before creating instance
+        if (shouldAutoDeleteBucket(bucketData.createdAt)) {
+          console.log(`Auto-deleting expired bucket: ${bucketData.name} (${bucketId})`)
+          await this.autoDeleteExpiredBucket(bucketId)
+          return null // Bucket was auto-deleted
+        }
+        
+        const bucket = Bucket.fromFirestore(docSnap.id, bucketData)
         this.buckets.set(bucket.id, bucket)
         return bucket
       }
@@ -315,6 +333,66 @@ export class BucketService {
     } catch (error) {
       console.error('Error reading PIN mappings:', error)
       return {}
+    }
+  }
+
+  /**
+   * Auto-delete an expired bucket and its files (client-side cleanup)
+   * @param {string} bucketId - Bucket ID to delete
+   * @returns {Promise<void>}
+   */
+  async autoDeleteExpiredBucket(bucketId) {
+    try {
+      console.log(`Starting auto-deletion of expired bucket: ${bucketId}`)
+      
+      // Import fileService to delete bucket files
+      const { fileService } = await import('./file.service.js')
+      
+      // Delete all files in the bucket first
+      await fileService.deleteAllBucketFiles(bucketId, true)
+      
+      // Mark bucket as deleted with auto-deletion reason
+      await this.updateBucket(bucketId, { 
+        isActive: false,
+        deletedAt: new Date().toISOString(),
+        deletedReason: 'auto_expired_7_days'
+      })
+      
+      // Remove from cache
+      this.buckets.delete(bucketId)
+      
+      console.log(`Successfully auto-deleted expired bucket: ${bucketId}`)
+    } catch (error) {
+      console.error(`Error auto-deleting expired bucket ${bucketId}:`, error)
+      // Don't throw error to prevent disrupting user experience
+    }
+  }
+
+  /**
+   * Cleanup expired buckets for a specific user (client-side batch cleanup)
+   * @param {string} userId - User ID
+   * @returns {Promise<number>} Number of buckets cleaned up
+   */
+  async cleanupExpiredUserBuckets(userId) {
+    try {
+      const userBuckets = await this.getUserBuckets(userId)
+      let cleanedCount = 0
+      
+      for (const bucket of userBuckets) {
+        if (shouldAutoDeleteBucket(bucket.createdAt)) {
+          await this.autoDeleteExpiredBucket(bucket.id)
+          cleanedCount++
+        }
+      }
+      
+      if (cleanedCount > 0) {
+        console.log(`Cleaned up ${cleanedCount} expired buckets for user ${userId}`)
+      }
+      
+      return cleanedCount
+    } catch (error) {
+      console.error('Error during user bucket cleanup:', error)
+      return 0
     }
   }
 

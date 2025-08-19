@@ -153,3 +153,26 @@ export const calculateTotalStorage = (files) => {
     return total + bytes
   }, 0)
 }
+
+/**
+ * Check if a bucket should be auto-deleted (7+ days old)
+ * @param {string} createdAt - ISO timestamp of bucket creation
+ * @returns {boolean} True if bucket should be auto-deleted
+ */
+export const shouldAutoDeleteBucket = (createdAt) => {
+  const createdDate = new Date(createdAt)
+  const now = new Date()
+  const daysDiff = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24))
+  return daysDiff >= 7
+}
+
+/**
+ * Get bucket age in days
+ * @param {string} createdAt - ISO timestamp of bucket creation
+ * @returns {number} Age in days
+ */
+export const getBucketAgeInDays = (createdAt) => {
+  const createdDate = new Date(createdAt)
+  const now = new Date()
+  return Math.floor((now - createdDate) / (1000 * 60 * 60 * 24))
+}
