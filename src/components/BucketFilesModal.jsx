@@ -60,10 +60,18 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
 
   const handleDownload = async (file) => {
     try {
-      const downloadUrl = await fileService.downloadFile(file.id)
+      // Use the PIN user download method that doesn't try to record statistics
+      const downloadUrl = await fileService.downloadFileForPinUser(file.id)
+      
+      // Instead of fetching as blob (which causes CORS issues), 
+      // open the download URL in a new window/tab which will trigger download
       const link = document.createElement('a')
       link.href = downloadUrl
       link.download = file.name
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      
+      // Trigger the download
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -113,26 +121,33 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white p-6">
+          <div className="bg-blue-600 text-white p-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold">{bucket?.name || 'Bucket Files'}</h2>
                 <p className="text-white/80 mt-1">
-                  PIN: {bucket?.pinCode} • {files.length} files
+                  {files.length} files
                 </p>
               </div>
-              <button
-                onClick={onClose}
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center space-x-4">
+                {/* PIN Container */}
+                <div className="bg-white rounded-lg px-4 py-2">
+                  <div className="text-sm font-mono font-semibold text-gray-900">{bucket?.pinCode}</div>
+                </div>
+                {/* Close Button */}
+                <button
+                  onClick={onClose}
+                  className="text-white/80 hover:text-white transition-colors p-1"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 

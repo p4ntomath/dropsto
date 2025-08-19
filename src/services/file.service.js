@@ -324,6 +324,27 @@ export class FileService {
   }
 
   /**
+   * Download a file for PIN users (no authentication required, no download recording)
+   * @param {string} fileId - File ID
+   * @returns {Promise<string>} Download URL
+   */
+  async downloadFileForPinUser(fileId) {
+    try {
+      const file = await this.getFileById(fileId)
+      if (!file) {
+        throw new Error('File not found')
+      }
+
+      // Return download URL without recording statistics
+      // PIN users don't have authentication so we can't update Firestore
+      return file.downloadURL
+    } catch (error) {
+      console.error('Error downloading file for PIN user:', error)
+      throw new Error('Failed to download file.')
+    }
+  }
+
+  /**
    * Record file download
    * @param {string} fileId - File ID
    */
