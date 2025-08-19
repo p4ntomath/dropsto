@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { bucketService } from '../services/bucket.service'
 import BucketFilesModal from './BucketFilesModal'
 import copyIcon from '../assets/copy.svg'
@@ -11,11 +12,12 @@ function HeroSection() {
   const [selectedBucket, setSelectedBucket] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isInputFocused, setIsInputFocused] = useState(false)
+  const navigate = useNavigate()
 
   const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
       transition: {
         duration: 0.8,
@@ -114,6 +116,10 @@ function HeroSection() {
     if (e.key === 'Enter') {
       handleRetrieveFiles()
     }
+  }
+
+  const handleGetStarted = () => {
+    navigate('/auth')
   }
 
   return (
@@ -263,6 +269,7 @@ function HeroSection() {
               variants={fadeInUp}
             >
               <motion.button 
+                onClick={handleGetStarted}
                 className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-2 rounded-xl text-base font-semibold hover:from-cyan-600 hover:to-blue-600 transform hover:scale-105 transition-all duration-200 shadow-2xl"
                 variants={fadeInLeft}
                 whileHover={{ scale: 1.05 }}

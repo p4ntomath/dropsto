@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
 import { fileService } from '../services/file.service'
-import { getDaysUntilExpiration, getExpirationStatus } from '../utils/helpers'
+import { getDaysUntilExpiration, getExpirationStatus, formatDate } from '../utils/helpers'
 import dropstoLogo from '/dropstoLogoNoText.png'
 import potIcon from '../assets/potIcon.png'
 
@@ -614,7 +614,7 @@ function BucketView() {
                     </h3>
                     <p className="text-xs sm:text-sm text-gray-500 mb-2">{file.getFormattedSize()}</p>
                     <p className="text-xs text-gray-400">
-                      {new Date(file.uploadedAt).toLocaleDateString()}
+                      {formatDate(file.uploadedAt)}
                     </p>
                     {file.downloadCount > 0 && (
                       <p className="text-xs text-blue-600 mt-1">
@@ -650,7 +650,7 @@ function BucketView() {
                             {file.getFormattedSize()}
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(file.uploadedAt).toLocaleDateString()}
+                            {formatDate(file.uploadedAt)}
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {file.downloadCount || 0}

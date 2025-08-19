@@ -351,13 +351,19 @@ export class FileService {
   async recordDownload(fileId) {
     try {
       const file = this.files.get(fileId)
+      const currentCount = file?.downloadCount || 0
+      const newCount = currentCount + 1
+
+      // Update cached file if it exists
       if (file) {
-        file.recordDownload()
+        file.downloadCount = newCount
+        file.lastDownloaded = new Date().toISOString()
       }
 
+      // Update Firestore with the new count (not incrementing the already incremented cache)
       const docRef = doc(db, COLLECTIONS.FILES, fileId)
       await updateDoc(docRef, {
-        downloadCount: (file?.downloadCount || 0) + 1,
+        downloadCount: newCount,
         lastDownloaded: new Date().toISOString()
       })
     } catch (error) {
