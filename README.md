@@ -6,7 +6,7 @@ DropSto is a lightweight, serverless, temporary file storage web app designed fo
 
 ## What is DropSto?
 
-DropSto revolutionizes file sharing by eliminating the friction of traditional cloud storage services. Users create a storage bucket once, receive a unique PIN code, and can then upload, download, or delete files from anywhere no account login needed after bucket creation. Files are stored securely and automatically deleted after 7 days, making it ideal for temporary file sharing scenarios.
+DropSto revolutionizes file sharing by eliminating the friction of traditional cloud storage services. Users create a storage bucket once, receive a unique PIN code, and can then upload and download files from anywhere no account login needed after bucket creation. Files are stored securely and automatically deleted after 7 days, making it ideal for temporary file sharing scenarios.
 
 ## Perfect For
 
