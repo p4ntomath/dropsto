@@ -3,6 +3,21 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "license": "MIT",
+  "description": "A secure, temporary file sharing platform with PIN-based access and automatic cleanup",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/dropsto.git"
+  },
+  "keywords": [
+    "file-sharing",
+    "temporary-storage",
+    "pin-based-access",
+    "firebase",
+    "react",
+    "vite"
+  ],
+  "author": "DropSto Team",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
