@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
 import { fileService } from '../services/file.service'
 import { getDaysUntilExpiration, getExpirationStatus, formatDate } from '../utils/helpers'
-import dropstoLogo from '/dropstoLogoNoText.png'
 import potIcon from '../assets/potIcon.png'
 
 function BucketView() {
@@ -428,7 +427,7 @@ function BucketView() {
                 <span>Back</span>
               </button>
               <div className="flex items-center space-x-3 flex-1 min-w-0">
-                <img src={dropstoLogo} alt="DropSto Logo" className="w-6 h-6 sm:w-8 sm:h-8 object-contain flex-shrink-0" />
+                <img src="/dropstoLogoNoText.png" alt="DropSto Logo" className="w-6 h-6 sm:w-8 sm:h-8 object-contain flex-shrink-0" />
                 <div className="min-w-0">
                   <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">{bucket.name}</h1>
                   <p className="text-xs sm:text-sm text-gray-500 truncate">{bucket.description}</p>

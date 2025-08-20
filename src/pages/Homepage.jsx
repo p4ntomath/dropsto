@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { useBuckets } from '../hooks/useBuckets'
 import { BUCKET_COLORS, BUCKET_ICONS } from '../utils/constants'
 import { getDaysUntilExpiration, getExpirationStatus } from '../utils/helpers'
-import dropstoLogo from '/dropstoLogoNoText.png'
 import potIcon from '../assets/potIcon.png'
 import copyIcon from '../assets/copy.svg'
 
@@ -241,7 +240,7 @@ function Homepage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <img 
-              src={dropstoLogo}
+              src="/dropstoLogoNoText.png"
               alt="DropSto Logo" 
               className="w-8 h-8 object-contain"
             />
@@ -268,7 +267,7 @@ function Homepage() {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
                 <img 
-                  src={dropstoLogo}
+                  src="/dropstoLogoNoText.png"
                   alt="DropSto Logo" 
                   className="w-8 h-8 object-contain"
                 />
@@ -358,7 +357,7 @@ function Homepage() {
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <img 
-              src={dropstoLogo}
+              src="/dropstoLogoNoText.png"
               alt="DropSto Logo" 
               className="w-8 h-8 object-contain"
             />
