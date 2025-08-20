@@ -122,6 +122,10 @@ function HeroSection() {
     navigate('/auth')
   }
 
+  const handleWatchDemo = () => {
+    window.open('https://www.youtube.com/watch?v=B-6DVxK2wAc', '_blank')
+  }
+
   return (
     <>
       <section className="relative overflow-hidden pt-16 pb-32">
@@ -278,6 +282,7 @@ function HeroSection() {
                 Get Started Free
               </motion.button>
               <motion.button 
+                onClick={handleWatchDemo}
                 className="border-2 border-white/30 text-white px-4 py-2 rounded-xl text-base font-semibold hover:bg-white/10 transition-colors"
                 variants={fadeInRight}
                 whileHover={{ scale: 1.05 }}
