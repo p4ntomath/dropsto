@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import { authService } from '../services/auth.service.js'
-import dropstoLogo from '/dropstoLogoNoText.png'
 
 export default function AuthPage() {
   const [error, setError] = useState(null)
@@ -34,7 +33,7 @@ export default function AuthPage() {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <img 
-              src={dropstoLogo}
+              src="/dropstoLogoNoText.png"
               alt="DropSto Logo" 
               className="w-16 h-16 object-contain"
             />
