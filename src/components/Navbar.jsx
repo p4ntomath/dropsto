@@ -1,7 +1,21 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useAuth } from '../contexts/AuthContext'
 
 function Navbar({ isMenuOpen, setIsMenuOpen }) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+
+  const handleSignInClick = () => {
+    if (user) {
+      // User is already authenticated, redirect to home
+      navigate('/home')
+    } else {
+      // User is not authenticated, redirect to auth page
+      navigate('/auth')
+    }
+  }
+
   return (
     <>
       <nav className="relative z-50 bg-white/10 backdrop-blur-md border-b border-white/20">
@@ -20,12 +34,12 @@ function Navbar({ isMenuOpen, setIsMenuOpen }) {
             
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-white/80 text-md hover:text-white transition-colors">How To Use</a>
-              <Link 
-                to="/auth" 
+              <button 
+                onClick={handleSignInClick}
                 className="bg-white/20 text-white text-md px-4 py-1 rounded-lg hover:bg-white/30 transition-colors"
               >
-                Sign In
-              </Link>
+                {user ? 'Go to Dashboard' : 'Sign In'}
+              </button>
             </div>
 
             <button 
@@ -62,13 +76,15 @@ function Navbar({ isMenuOpen, setIsMenuOpen }) {
               >
                 How To Use
               </a>
-              <Link 
-                to="/auth" 
+              <button 
+                onClick={() => {
+                  handleSignInClick()
+                  setIsMenuOpen(false)
+                }}
                 className="bg-white/20 text-white text-lg px-4 py-2 rounded-lg hover:bg-white/30 transition-colors text-center"
-                onClick={() => setIsMenuOpen(false)}
               >
-                Sign In
-              </Link>
+                {user ? 'Go to Dashboard' : 'Sign In'}
+              </button>
             </div>
           </div>
         </motion.div>

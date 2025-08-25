@@ -11,6 +11,7 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState('')
   const [dragActive, setDragActive] = useState(false)
+  const [downloadingFiles, setDownloadingFiles] = useState(new Set()) // Track downloading files
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -60,25 +61,53 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
   }
 
   const handleDownload = async (file) => {
+    // Prevent multiple downloads of the same file
+    if (downloadingFiles.has(file.id)) {
+      return
+    }
+
     try {
+      // Add file to downloading set
+      setDownloadingFiles(prev => new Set(prev).add(file.id))
+      
       // Use the PIN user download method that doesn't try to record statistics
       const downloadUrl = await fileService.downloadFileForPinUser(file.id)
+      const response = await fetch(downloadUrl)
       
-      // Instead of fetching as blob (which causes CORS issues), 
-      // open the download URL in a new window/tab which will trigger download
+      if (!response.ok) {
+        throw new Error('Failed to fetch file')
+      }
+      
+      const blob = await response.blob()
+      
+      // Create object URL for the blob
+      const objectUrl = URL.createObjectURL(blob)
+      
+      // Create download link
       const link = document.createElement('a')
-      link.href = downloadUrl
-      link.download = file.name
-      link.target = '_blank'
-      link.rel = 'noopener noreferrer'
+      link.href = objectUrl
+      link.download = file.name // This forces download instead of opening
+      link.style.display = 'none'
       
       // Trigger the download
       document.body.appendChild(link)
       link.click()
+      
+      // Clean up
       document.body.removeChild(link)
+      URL.revokeObjectURL(objectUrl)
     } catch (error) {
       console.error('Error downloading file:', error)
       setError('Failed to download file. Please try again.')
+    } finally {
+      // Remove file from downloading set after a delay to show feedback
+      setTimeout(() => {
+        setDownloadingFiles(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(file.id)
+          return newSet
+        })
+      }, 2000) // 2 second delay to show "Downloaded" state
     }
   }
 
@@ -285,9 +314,21 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => handleDownload(file)}
-                          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                          disabled={downloadingFiles.has(file.id)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                            downloadingFiles.has(file.id)
+                              ? 'bg-green-500 text-white cursor-not-allowed'
+                              : 'bg-blue-500 text-white hover:bg-blue-600'
+                          }`}
                         >
-                          Download
+                          {downloadingFiles.has(file.id) ? (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              <span>Downloading...</span>
+                            </div>
+                          ) : (
+                            'Download'
+                          )}
                         </button>
                       </div>
                     </motion.div>
