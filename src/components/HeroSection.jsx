@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
 import BucketFilesModal from './BucketFilesModal'
 import copyIcon from '../assets/copy.svg'
@@ -12,6 +13,7 @@ function HeroSection() {
   const [selectedBucket, setSelectedBucket] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isInputFocused, setIsInputFocused] = useState(false)
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   const fadeInUp = {
@@ -119,7 +121,13 @@ function HeroSection() {
   }
 
   const handleGetStarted = () => {
-    navigate('/auth')
+    if (user) {
+      // User is already authenticated, redirect to home
+      navigate('/home')
+    } else {
+      // User is not authenticated, redirect to auth page
+      navigate('/auth')
+    }
   }
 
   const handleWatchDemo = () => {
@@ -279,7 +287,7 @@ function HeroSection() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                Get Started Free
+                {user ? 'Go to Dashboard' : 'Get Started Free'}
               </motion.button>
               <motion.button 
                 onClick={handleWatchDemo}
