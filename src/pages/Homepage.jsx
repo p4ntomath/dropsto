@@ -833,14 +833,10 @@ function Homepage() {
                     <img src={copyIcon} alt="Copy" className="w-5 h-5" />
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2 text-center">
-                  Format: drop-XXXX (new) or drop-XXXXXXXX (legacy)
-                </p>
               </div>
-
               <div className="bg-blue-50 rounded-lg p-4 mb-6">
                 <p className="text-sm text-blue-800">
-                  <strong>Important:</strong> Anyone with this PIN code can access your bucket. Keep it secure and only share with trusted people.
+                  <strong className='text-red-600'>Important:</strong> Anyone with this PIN code can access your bucket. Keep it secure and only share with trusted people.
                 </p>
               </div>
 

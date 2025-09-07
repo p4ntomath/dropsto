@@ -248,7 +248,7 @@ function HeroSection() {
                   {/* Submit Button */}
                   <button
                     onClick={handleRetrieveFiles}
-                    disabled={!pin.trim() || pin.length < 13 || isLoading}
+                    disabled={!pin.trim() || (pin.length !== 9 && pin.length !== 13) || isLoading}
                     className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white py-4 rounded-lg text-lg font-semibold hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg hover:shadow-xl"
                   >
                     {isLoading ? (
