@@ -9,7 +9,7 @@ function FeaturesSection() {
         </svg>
       ),
       title: "Create Your Bucket",
-      description: "Sign up once, name your bucket, and get your unique PIN code."
+      description: "Sign up once, name your bucket, and get your easy-to-remember 4-character PIN code."
     },
     {
       icon: (

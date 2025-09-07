@@ -2,12 +2,12 @@ import { STORAGE_LIMITS } from './constants.js'
 
 /**
  * Generate a unique PIN code for bucket access
- * @returns {string} PIN code in format "drop-XXXXXXXX"
+ * @returns {string} PIN code in format "drop-XXXX"
  */
 export const generatePinCode = () => {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   let result = 'drop-'
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 4; i++) {
     result += characters.charAt(Math.floor(Math.random() * characters.length))
   }
   return result
