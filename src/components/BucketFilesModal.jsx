@@ -6,12 +6,10 @@ import { formatFileSize, formatDate } from '../utils/helpers'
 function BucketFilesModal({ bucket, isOpen, onClose }) {
   const [files, setFiles] = useState([])
   const [isLoading, setIsLoading] = useState(false)
-  const [uploadFiles, setUploadFiles] = useState([])
   const [isUploading, setIsUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState('')
   const [dragActive, setDragActive] = useState(false)
-  const [downloadingFiles, setDownloadingFiles] = useState(new Set()) // Track downloading files
+  const [downloadingFiles, setDownloadingFiles] = useState(new Set())
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -34,26 +32,24 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
     }
   }
 
-  const handleFileSelect = (e) => {
-    const selectedFiles = Array.from(e.target.files)
-    setUploadFiles(selectedFiles)
+  const handleFileSelect = async (e) => {
+    const selectedFiles = Array.from(e.target.files || [])
+    if (selectedFiles.length === 0) return
+    
+    await handleUpload(selectedFiles)
   }
 
-  const handleUpload = async () => {
-    if (uploadFiles.length === 0) return
-
+  const handleUpload = async (filesToUpload) => {
     setIsUploading(true)
     setError('')
     try {
-      await fileService.uploadFiles(uploadFiles, bucket.id, 'pin-user')
-      setUploadFiles([])
+      await fileService.uploadFiles(filesToUpload, bucket.id, 'pin-user')
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
-      await loadFiles() // Refresh file list
+      await loadFiles()
     } catch (error) {
       console.error('Error uploading files:', error)
-      // Show the actual error message from the service instead of generic message
       setError(error.message || 'Failed to upload files. Please try again.')
     } finally {
       setIsUploading(false)
@@ -61,16 +57,12 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
   }
 
   const handleDownload = async (file) => {
-    // Prevent multiple downloads of the same file
     if (downloadingFiles.has(file.id)) {
       return
     }
 
     try {
-      // Add file to downloading set
       setDownloadingFiles(prev => new Set(prev).add(file.id))
-      
-      // Use the PIN user download method that doesn't try to record statistics
       const downloadUrl = await fileService.downloadFileForPinUser(file.id)
       const response = await fetch(downloadUrl)
       
@@ -79,35 +71,25 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
       }
       
       const blob = await response.blob()
-      
-      // Create object URL for the blob
       const objectUrl = URL.createObjectURL(blob)
-      
-      // Create download link
       const link = document.createElement('a')
       link.href = objectUrl
-      link.download = file.name // This forces download instead of opening
-      link.style.display = 'none'
-      
-      // Trigger the download
+      link.download = file.name
       document.body.appendChild(link)
       link.click()
-      
-      // Clean up
       document.body.removeChild(link)
       URL.revokeObjectURL(objectUrl)
     } catch (error) {
       console.error('Error downloading file:', error)
       setError('Failed to download file. Please try again.')
     } finally {
-      // Remove file from downloading set after a delay to show feedback
       setTimeout(() => {
         setDownloadingFiles(prev => {
           const newSet = new Set(prev)
           newSet.delete(file.id)
           return newSet
         })
-      }, 2000) // 2 second delay to show "Downloaded" state
+      }, 2000)
     }
   }
 
@@ -121,19 +103,15 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
     }
   }
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const droppedFiles = Array.from(e.dataTransfer.files)
-      setUploadFiles(droppedFiles)
+      await handleUpload(droppedFiles)
     }
-  }
-
-  const removeUploadFile = (index) => {
-    setUploadFiles(prev => prev.filter((_, i) => i !== index))
   }
 
   if (!isOpen) return null
@@ -151,58 +129,34 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+          className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
-          <div className="bg-blue-600 text-white p-6">
+          <div className="p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold">{bucket?.name || 'Bucket Files'}</h2>
-                <p className="text-white/80 mt-1">
-                  {files.length} files
-                </p>
-              </div>
-              <div className="flex items-center space-x-4">
-                {/* PIN Container */}
-                <div className="bg-white rounded-lg px-4 py-2">
-                  <div className="text-sm font-mono font-semibold text-gray-900">{bucket?.pinCode}</div>
-                </div>
-                {/* Close Button */}
-                <button
-                  onClick={onClose}
-                  className="text-white/80 hover:text-white transition-colors p-1"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+              <h2 className="text-xl font-semibold text-gray-900">{bucket?.name || 'Bucket'}</h2>
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
 
-          <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-            {/* Upload Section */}
+          <div className="p-6">
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3">Upload Files</h3>
-              <div
+              <div 
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                  dragActive 
-                    ? 'border-cyan-500 bg-cyan-50' 
-                    : 'border-gray-300 hover:border-cyan-400'
+                  dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
                 }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
               >
-                <div className="text-gray-600">
-                  <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  <p className="text-lg font-medium">Drop files here or click to select</p>
-                  <p className="text-sm text-gray-500 mt-1">Upload multiple files at once</p>
-                </div>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -212,130 +166,72 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="mt-4 bg-cyan-500 text-white px-6 py-2 rounded-lg hover:bg-cyan-600 transition-colors"
+                  disabled={isUploading}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Select Files
+                  {isUploading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>Uploading...</span>
+                    </div>
+                  ) : (
+                    'Upload Files'
+                  )}
                 </button>
+                <p className="text-sm text-gray-500 mt-2">or drag and drop files here</p>
               </div>
-
-              {/* Upload Queue */}
-              {uploadFiles.length > 0 && (
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">Files to Upload ({uploadFiles.length})</h4>
-                    <button
-                      onClick={handleUpload}
-                      disabled={isUploading}
-                      className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
-                    >
-                      {isUploading ? 'Uploading...' : 'Upload All'}
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {uploadFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center space-x-3">
-                          <div className="text-2xl">📄</div>
-                          <div>
-                            <p className="font-medium">{file.name}</p>
-                            <p className="text-sm text-gray-500">{formatFileSize(file.size)}</p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => removeUploadFile(index)}
-                          className="text-red-500 hover:text-red-700 transition-colors"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Error Display */}
             {error && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-700">{error}</p>
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                {error}
               </div>
             )}
 
-            {/* Files List */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Files in Bucket</h3>
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500 mx-auto"></div>
-                  <p className="text-gray-600 mt-2">Loading files...</p>
-                </div>
-              ) : files.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <p className="text-lg">No files in this bucket yet</p>
-                  <p className="text-sm">Upload some files to get started</p>
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {files.map((file) => (
-                    <motion.div
-                      key={file.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center justify-between bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors"
+            {isLoading ? (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+              </div>
+            ) : files.length > 0 ? (
+              <div className="space-y-2">
+                {files.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatFileSize(file.size)} • {formatDate(file.uploadedAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDownload(file)}
+                      disabled={downloadingFiles.has(file.id)}
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <div className="flex items-center space-x-4">
-                        <div className="text-3xl">
-                          {file.type?.startsWith('image/') ? '🖼️' :
-                           file.type?.startsWith('video/') ? '🎥' :
-                           file.type?.startsWith('audio/') ? '🎵' :
-                           file.type?.includes('pdf') ? '📄' :
-                           file.type?.includes('document') ? '📝' :
-                           file.type?.includes('spreadsheet') ? '📊' :
-                           file.type?.includes('presentation') ? '📽️' :
-                           '📄'}
+                      {downloadingFiles.has(file.id) ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
+                          <span>Downloading...</span>
                         </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900">{file.name}</h4>
-                          <p className="text-sm text-gray-500">
-                            {formatFileSize(file.size)} • Uploaded {formatDate(file.uploadedAt)}
-                          </p>
-                          {file.downloadCount > 0 && (
-                            <p className="text-xs text-gray-400">
-                              Downloaded {file.downloadCount} times
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleDownload(file)}
-                          disabled={downloadingFiles.has(file.id)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                            downloadingFiles.has(file.id)
-                              ? 'bg-green-500 text-white cursor-not-allowed'
-                              : 'bg-blue-500 text-white hover:bg-blue-600'
-                          }`}
-                        >
-                          {downloadingFiles.has(file.id) ? (
-                            <div className="flex items-center space-x-2">
-                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                              <span>Downloading...</span>
-                            </div>
-                          ) : (
-                            'Download'
-                          )}
-                        </button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </div>
+                      ) : (
+                        'Download'
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-4">
+                No files uploaded yet
+              </div>
+            )}
           </div>
         </motion.div>
       </motion.div>

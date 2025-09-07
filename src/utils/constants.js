@@ -4,7 +4,11 @@ export const STORAGE_LIMITS = {
   BUCKET_EXPIRY_DAYS: 7
 }
 
-
+// PIN format constants
+export const PIN_LENGTH = {
+  NEW: 9,      // Total length for 'drop-XXXX' format
+  LEGACY: 13   // Total length for 'drop-XXXXXXXX' format
+}
 
 // Bucket color options
 export const BUCKET_COLORS = [

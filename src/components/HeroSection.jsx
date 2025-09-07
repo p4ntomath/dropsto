@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
 import BucketFilesModal from './BucketFilesModal'
 import copyIcon from '../assets/copy.svg'
+import { PIN_LENGTH } from '../utils/constants'
 
 function HeroSection() {
   const [pin, setPin] = useState('')
@@ -71,9 +72,9 @@ function HeroSection() {
       value = 'drop-' + value.substring(5)
     }
     
-    // Limit to correct format: drop-XXXXXXXX (13 characters total)
-    if (value.length > 13) {
-      value = value.substring(0, 13)
+    // Limit to correct format: drop-XXXX or legacy drop-XXXXXXXX
+    if (value.length > PIN_LENGTH.LEGACY) {
+      value = value.substring(0, PIN_LENGTH.LEGACY)
     }
     
     setPin(value)
@@ -81,8 +82,15 @@ function HeroSection() {
   }
 
   const handleRetrieveFiles = async () => {
-    if (!pin.trim() || pin.length < 13) {
-      setPinError('Please enter a complete PIN code in format: drop-XXXXXXXX')
+    if (!pin.trim()) {
+      setPinError('Please enter a PIN code')
+      return
+    }
+
+    // Check if it matches either format (drop-XXXX or drop-XXXXXXXX)
+    const isValidFormat = pin.length === PIN_LENGTH.NEW || pin.length === PIN_LENGTH.LEGACY
+    if (!isValidFormat) {
+      setPinError('Please enter a valid PIN code')
       return
     }
     
@@ -183,7 +191,7 @@ function HeroSection() {
                         onKeyPress={handlePinKeyPress}
                         onFocus={() => setIsInputFocused(true)}
                         onBlur={() => setIsInputFocused(false)}
-                        placeholder="drop-xxxxxxxx"
+                        placeholder="drop-XXXX"
                         className={`w-full bg-white/10 border-2 rounded-lg px-4 py-4 text-white placeholder-white/40 focus:outline-none text-center text-xl font-mono tracking-wider transition-all duration-300 ${
                           isInputFocused 
                             ? 'border-cyan-400 ring-4 ring-cyan-400/20 bg-white/15' 
@@ -196,7 +204,7 @@ function HeroSection() {
                       
                       {/* PIN Format Indicator */}
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        {pin.length === 13 ? (
+                        {pin.length === PIN_LENGTH.NEW || pin.length === PIN_LENGTH.LEGACY ? (
                           <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -204,7 +212,7 @@ function HeroSection() {
                           </div>
                         ) : pin.length > 0 ? (
                           <div className="text-white/50 text-sm font-mono">
-                            {pin.length}/13
+                            {pin.length}/{pin.length > PIN_LENGTH.NEW ? PIN_LENGTH.LEGACY : PIN_LENGTH.NEW}
                           </div>
                         ) : null}
                       </div>
@@ -217,31 +225,31 @@ function HeroSection() {
                         animate={{ opacity: 1, y: 0 }}
                         className="mt-2 text-white/50 text-xs text-center"
                       >
-                        Format: drop-xxxxxxxx (8 characters after dash)
+                        Format: drop-XXXX (or drop-XXXXXXXX for legacy PINs)
+                      </motion.div>
+                    )}
+
+                    {/* Error Display */}
+                    {pinError && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="p-3 mt-2 bg-red-500/20 border border-red-400/30 rounded-lg"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p className="text-red-300 text-sm">{pinError}</p>
+                        </div>
                       </motion.div>
                     )}
                   </div>
 
-                  {/* Error Display */}
-                  {pinError && (
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="p-3 bg-red-500/20 border border-red-400/30 rounded-lg"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p className="text-red-300 text-sm">{pinError}</p>
-                      </div>
-                    </motion.div>
-                  )}
-
                   {/* Submit Button */}
                   <button
                     onClick={handleRetrieveFiles}
-                    disabled={!pin.trim() || pin.length < 13 || isLoading}
+                    disabled={!pin.trim() || (pin.length !== PIN_LENGTH.NEW && pin.length !== PIN_LENGTH.LEGACY) || isLoading}
                     className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white py-4 rounded-lg text-lg font-semibold hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg hover:shadow-xl"
                   >
                     {isLoading ? (

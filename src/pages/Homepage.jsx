@@ -820,7 +820,7 @@ function Homepage() {
               <p className="text-gray-600 mb-6">Your bucket PIN code is ready. Save this code to access your bucket from anywhere.</p>
               
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">PIN Code</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Bucket PIN</label>
                 <div className="flex items-center justify-center">
                   <code className="text-2xl font-mono font-bold text-blue-600 bg-white px-4 py-2 rounded border border-gray-200">
                     {createdBucketPin}
@@ -834,10 +834,9 @@ function Homepage() {
                   </button>
                 </div>
               </div>
-
               <div className="bg-blue-50 rounded-lg p-4 mb-6">
                 <p className="text-sm text-blue-800">
-                  <strong>Important:</strong> Anyone with this PIN code can access your bucket. Keep it secure and only share with trusted people.
+                  <strong className='text-red-600'>Important:</strong> Anyone with this PIN code can access your bucket. Keep it secure and only share with trusted people.
                 </p>
               </div>
 
