@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.12",
+    "bcryptjs": "^3.0.2",
     "firebase": "^12.1.0",
     "framer-motion": "^12.23.12",
     "react": "^19.1.1",

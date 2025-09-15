@@ -10,6 +10,7 @@ import {
   onSnapshot
 } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
+import bcrypt from 'bcryptjs'
 import { db } from '../firebase/config.js'
 import { Bucket } from '../models/bucket.model.js'
 import { COLLECTIONS, STORAGE_KEYS } from '../utils/constants.js'
@@ -38,6 +39,26 @@ export class BucketService {
   }
 
   /**
+   * Hash a PIN code
+   * @param {string} pin - PIN to hash
+   * @returns {Promise<string>} Hashed PIN
+   */
+  async hashPin(pin) {
+    const salt = await bcrypt.genSalt(10)
+    return bcrypt.hash(pin, salt)
+  }
+
+  /**
+   * Compare a PIN with a hash
+   * @param {string} pin - PIN to check
+   * @param {string} hash - Hash to compare against
+   * @returns {Promise<boolean>} Whether they match
+   */
+  async comparePin(pin, hash) {
+    return bcrypt.compare(pin, hash)
+  }
+
+  /**
    * Create a new bucket with retry logic for PIN conflicts
    * @param {object} bucketData - Bucket creation data
    * @param {string} userId - User ID of the bucket owner
@@ -50,36 +71,36 @@ export class BucketService {
       try {
         // Generate a PIN code
         const pinCode = generatePinCode()
+        const hashedPin = await this.hashPin(pinCode)
         
         const bucket = new Bucket({
           ...bucketData,
           ownerId: userId,
           ownerEmail: bucketData.ownerEmail,
           owner: bucketData.owner,
-          pinCode: pinCode
+          pinCode, // Stored temporarily in memory
+          hashedPin // Only this is stored in database
         })
 
-        // Try to add to Firestore
+        // Try to add to Firestore (toFirestore method will exclude pinCode)
         const docRef = await addDoc(collection(db, COLLECTIONS.BUCKETS), bucket.toFirestore())
         bucket.id = docRef.id
 
         // Store PIN mapping locally for quick access
-        this.storePinMapping(bucket.pinCode, bucket.id)
+        this.storePinMapping(pinCode, bucket.id)
 
         // Cache the bucket
         this.buckets.set(bucket.id, bucket)
 
         return bucket
       } catch (error) {
-        // If it's a PIN conflict error (though Firestore doesn't enforce uniqueness by default)
-        // or any other creation error, retry with a new PIN
+        // If it's a PIN conflict error or any other creation error, retry with a new PIN
         if (attempt === maxRetries - 1) {
           console.error('Error creating bucket after max retries:', error)
           throw new Error('Failed to create bucket. Please try again.')
         }
         
         console.warn(`Bucket creation attempt ${attempt + 1} failed, retrying...`, error)
-        // Add a small delay between retries
         await new Promise(resolve => setTimeout(resolve, 100))
       }
     }
@@ -166,17 +187,17 @@ export class BucketService {
         return await this.getBucketById(bucketId)
       }
 
-      // Fallback: Query Firestore by PIN code
-      const q = query(
+      // First try finding a bucket with raw PIN (for backward compatibility)
+      const rawPinQuery = query(
         collection(db, COLLECTIONS.BUCKETS), 
         where('pinCode', '==', pinCode),
         where('isActive', '==', true)
       )
       
-      const querySnapshot = await getDocs(q)
+      const rawPinSnapshot = await getDocs(rawPinQuery)
       
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0]
+      if (!rawPinSnapshot.empty) {
+        const doc = rawPinSnapshot.docs[0]
         const bucket = Bucket.fromFirestore(doc.id, doc.data())
         
         // Update local PIN mapping
@@ -184,6 +205,28 @@ export class BucketService {
         this.buckets.set(bucket.id, bucket)
         
         return bucket
+      }
+
+      // If no raw PIN match, get all active buckets and check hashed PINs
+      const hashedPinQuery = query(
+        collection(db, COLLECTIONS.BUCKETS),
+        where('isActive', '==', true),
+        where('hashedPin', '!=', null)
+      )
+
+      const hashedPinSnapshot = await getDocs(hashedPinQuery)
+      
+      for (const doc of hashedPinSnapshot.docs) {
+        const bucketData = doc.data()
+        if (bucketData.hashedPin && await this.comparePin(pinCode, bucketData.hashedPin)) {
+          const bucket = Bucket.fromFirestore(doc.id, bucketData)
+          
+          // Update local PIN mapping
+          this.storePinMapping(pinCode, bucket.id)
+          this.buckets.set(bucket.id, bucket)
+          
+          return bucket
+        }
       }
 
       return null

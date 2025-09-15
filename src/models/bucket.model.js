@@ -18,10 +18,23 @@ export class Bucket {
     this.collaborators = data.collaborators || []
     this.createdAt = data.createdAt || new Date().toISOString()
     this.updatedAt = data.updatedAt || new Date().toISOString()
-    this.pinCode = data.pinCode || generatePinCode()
+    this._pinCode = data.pinCode // Store temporarily for creation
+    this.hashedPin = data.hashedPin || null
     this.fileCount = data.fileCount || 0
     this.storageUsed = data.storageUsed || 0 // in bytes
     this.isActive = data.isActive !== undefined ? data.isActive : true
+  }
+
+  // Getter for pinCode that only returns it if it exists (for legacy buckets)
+  get pinCode() {
+    return this._pinCode || null
+  }
+
+  // Only allow setting pinCode during creation
+  set pinCode(value) {
+    if (!this._pinCode) {
+      this._pinCode = value
+    }
   }
 
   /**
@@ -88,7 +101,7 @@ export class Bucket {
    * @returns {object}
    */
   toFirestore() {
-    return {
+    const data = {
       name: this.name,
       description: this.description,
       type: this.type,
@@ -100,11 +113,18 @@ export class Bucket {
       collaborators: this.collaborators,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      pinCode: this.pinCode,
+      hashedPin: this.hashedPin,
       fileCount: this.fileCount,
       storageUsed: this.storageUsed,
       isActive: this.isActive
     }
+
+    // Only include raw pinCode for legacy buckets
+    if (this._pinCode && !this.hashedPin) {
+      data.pinCode = this._pinCode
+    }
+
+    return data
   }
 
   /**
@@ -139,7 +159,7 @@ export class Bucket {
       ownerEmail: this.ownerEmail,
       isOwned: this.isOwned,
       createdAt: this.createdAt,
-      pinCode: this.pinCode
+      pinCode: this._pinCode // Keep raw PIN in legacy format for compatibility
     }
   }
 }
