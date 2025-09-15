@@ -5,10 +5,8 @@ import {
   getDocs, 
   addDoc, 
   updateDoc, 
-  deleteDoc, 
   query, 
   where, 
-  orderBy,
   onSnapshot
 } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
@@ -33,7 +31,7 @@ export class BucketService {
    * @param {number} maxRetries - Maximum number of retry attempts
    * @returns {Promise<string>} Unique PIN code
    */
-  async generateUniquePinCode(maxRetries = 10) {
+  async generateUniquePinCode() {
     // Simply generate a PIN code without checking for duplicates
     // Duplicate handling is done in createBucket with retry logic
     return generatePinCode()

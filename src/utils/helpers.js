@@ -5,7 +5,7 @@ import { STORAGE_LIMITS } from './constants.js'
  * @returns {string} PIN code in format "drop-XXXX"
  */
 export const generatePinCode = () => {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
   let result = 'drop-'
   for (let i = 0; i < 4; i++) {
     result += characters.charAt(Math.floor(Math.random() * characters.length))

@@ -191,7 +191,7 @@ function HeroSection() {
                         onKeyPress={handlePinKeyPress}
                         onFocus={() => setIsInputFocused(true)}
                         onBlur={() => setIsInputFocused(false)}
-                        placeholder="drop-XXXX"
+                        placeholder="drop-xxXX"
                         className={`w-full bg-white/10 border-2 rounded-lg px-4 py-4 text-white placeholder-white/40 focus:outline-none text-center text-xl font-mono tracking-wider transition-all duration-300 ${
                           isInputFocused 
                             ? 'border-cyan-400 ring-4 ring-cyan-400/20 bg-white/15' 
@@ -225,7 +225,7 @@ function HeroSection() {
                         animate={{ opacity: 1, y: 0 }}
                         className="mt-2 text-white/50 text-xs text-center"
                       >
-                        Format: drop-XXXX (or drop-XXXXXXXX for legacy PINs)
+                        Format: drop-XXXX (any combination of letters and numbers)
                       </motion.div>
                     )}
 
