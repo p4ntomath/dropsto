@@ -10,6 +10,14 @@ export const PIN_LENGTH = {
   LEGACY: 13   // Total length for 'drop-XXXXXXXX' format
 }
 
+// Security settings
+export const SECURITY = {
+  PIN_ATTEMPTS_BEFORE_CAPTCHA: 3,
+  PIN_ATTEMPTS_BEFORE_TIMEOUT: 10,
+  PIN_TIMEOUT_MINUTES: 60,
+  RECAPTCHA_SITE_KEY: '6LcR0sorAAAAAIOTAy5vW3EBoOY6XGqrQLdpplvE'
+}
+
 // Bucket color options
 export const BUCKET_COLORS = [
   { name: 'Blue', value: 'from-blue-500 to-cyan-500' },

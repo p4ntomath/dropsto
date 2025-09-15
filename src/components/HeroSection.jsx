@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import ReCAPTCHA from 'react-google-recaptcha'
 import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
 import BucketFilesModal from './BucketFilesModal'
-import copyIcon from '../assets/copy.svg'
-import { PIN_LENGTH } from '../utils/constants'
+import { PIN_LENGTH, SECURITY } from '../utils/constants'
 
 function HeroSection() {
   const [pin, setPin] = useState('')
@@ -14,6 +14,8 @@ function HeroSection() {
   const [selectedBucket, setSelectedBucket] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isInputFocused, setIsInputFocused] = useState(false)
+  const [showCaptcha, setShowCaptcha] = useState(false)
+  const recaptchaRef = useRef(null)
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -98,20 +100,39 @@ function HeroSection() {
     setPinError('')
     
     try {
-      // Use bucket service to find bucket by PIN
-      const bucket = await bucketService.getBucketByPin(pin.trim())
+      let recaptchaToken = null
+      // Get reCAPTCHA token if needed
+      if (showCaptcha && recaptchaRef.current) {
+        recaptchaToken = recaptchaRef.current.getValue()
+        if (!recaptchaToken) {
+          setPinError('Please complete the reCAPTCHA verification')
+          setIsLoading(false)
+          return
+        }
+      }
+
+      const bucket = await bucketService.getBucketByPin(pin.trim(), recaptchaToken)
       
       if (bucket) {
         // PIN is valid, show bucket files in modal
         setSelectedBucket(bucket)
         setIsModalOpen(true)
         setPin('') // Clear the PIN input
+        setShowCaptcha(false) // Reset captcha state
+        if (recaptchaRef.current) {
+          recaptchaRef.current.reset()
+        }
       } else {
         setPinError('Invalid PIN code. Please check and try again.')
       }
     } catch (error) {
       console.error('Error retrieving bucket:', error)
-      setPinError('Error accessing bucket. Please try again.')
+      if (error.message === 'RECAPTCHA_REQUIRED') {
+        setShowCaptcha(true)
+        setPinError('Please verify that you are human before continuing')
+      } else {
+        setPinError('Error accessing bucket. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -245,6 +266,21 @@ function HeroSection() {
                       </motion.div>
                     )}
                   </div>
+
+                  {/* Checkbox reCAPTCHA - only show after multiple wrong attempts */}
+                  {showCaptcha && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex justify-center mt-4"
+                    >
+                      <ReCAPTCHA
+                        ref={recaptchaRef}
+                        sitekey={SECURITY.RECAPTCHA_SITE_KEY}
+                        theme="dark"
+                      />
+                    </motion.div>
+                  )}
 
                   {/* Submit Button */}
                   <button

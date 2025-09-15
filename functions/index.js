@@ -1,32 +1,63 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
-const {onSchedule} = require("firebase-functions/v2/scheduler");
-const {initializeApp} = require("firebase-admin/app");
-const {getFirestore} = require("firebase-admin/firestore");
-const {getStorage} = require("firebase-admin/storage");
+import { initializeApp } from 'firebase-admin/app'
+import fetch from 'node-fetch'
+import { logger } from 'firebase-functions'
+import { onSchedule } from 'firebase-functions/v2/scheduler'
+import { getFirestore } from 'firebase-admin/firestore'
+import { getStorage } from 'firebase-admin/storage'
+import { onCall, HttpsError } from 'firebase-functions/v2/https'
 
 // Initialize Firebase Admin
-initializeApp();
+initializeApp()
 
-// Set global options for cost control
-setGlobalOptions({ maxInstances: 10 });
+/**
+ * Verify reCAPTCHA token
+ */
+export const verifyRecaptcha = onCall(async (request) => {
+  try {
+    const { token } = request.data
+    
+    if (!token) {
+      throw new HttpsError('invalid-argument', 'No reCAPTCHA token provided')
+    }
+
+    // Get secret key from functions config
+    const secretKey = process.env.RECAPTCHA_SECRET_KEY
+    if (!secretKey) {
+      throw new HttpsError('internal', 'reCAPTCHA configuration is missing')
+    }
+
+    // Verify with Google's reCAPTCHA API
+    const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `secret=${secretKey}&response=${token}`
+    })
+
+    const result = await response.json()
+
+    if (!result.success) {
+      logger.error('reCAPTCHA verification failed:', result['error-codes'])
+      throw new HttpsError('invalid-argument', 'reCAPTCHA verification failed: ' + (result['error-codes'] || []).join(', '))
+    }
+
+    return { success: true }
+  } catch (error) {
+    logger.error('Error verifying reCAPTCHA:', error)
+    if (error instanceof HttpsError) {
+      throw error
+    }
+    throw new HttpsError('internal', 'Failed to verify reCAPTCHA')
+  }
+})
 
 /**
  * Scheduled function that runs daily at midnight UTC to clean up expired and inactive buckets
  * - Buckets older than 7 days are automatically deleted along with their files
  * - Inactive buckets older than 24 hours are permanently deleted
  */
-exports.cleanupBuckets = onSchedule("0 0 * * *", async (event) => {
+export const cleanupBuckets = onSchedule("0 0 * * *", async (event) => {
   const db = getFirestore();
   const storage = getStorage();
   
@@ -146,7 +177,7 @@ exports.cleanupBuckets = onSchedule("0 0 * * *", async (event) => {
  * Helper function to check if a bucket should be deleted based on creation date
  * This can be called from other functions if needed
  */
-exports.shouldDeleteBucket = (createdAt) => {
+export const shouldDeleteBucket = (createdAt) => {
   const createdDate = new Date(createdAt);
   const now = new Date();
   const daysDiff = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));

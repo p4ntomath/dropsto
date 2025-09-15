@@ -10,10 +10,11 @@ import {
   onSnapshot
 } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
+import { getFunctions, httpsCallable } from 'firebase/functions'
 import bcrypt from 'bcryptjs'
 import { db } from '../firebase/config.js'
 import { Bucket } from '../models/bucket.model.js'
-import { COLLECTIONS, STORAGE_KEYS } from '../utils/constants.js'
+import { COLLECTIONS, STORAGE_KEYS, SECURITY } from '../utils/constants.js'
 import { generatePinCode, shouldAutoDeleteBucket } from '../utils/helpers.js'
 
 /**
@@ -24,7 +25,35 @@ export class BucketService {
     this.buckets = new Map()
     this.listeners = []
     this.auth = getAuth()
-    this.pinAttempts = new Map() // Track PIN attempts by IP
+    this.functions = getFunctions()
+    this.pinAttempts = new Map()
+    this.wrongAttempts = new Map()
+  }
+
+  /**
+   * Check if reCAPTCHA is required for this IP
+   * @param {string} clientIP - Client IP address
+   * @returns {boolean} Whether reCAPTCHA is required
+   */
+  isRecaptchaRequired(clientIP) {
+    const wrongAttempts = this.wrongAttempts.get(clientIP) || []
+    const now = Date.now()
+    
+    // Clean up old attempts (older than 1 hour)
+    const recentWrongAttempts = wrongAttempts.filter(time => now - time < 3600000)
+    this.wrongAttempts.set(clientIP, recentWrongAttempts)
+    
+    return recentWrongAttempts.length >= SECURITY.PIN_ATTEMPTS_BEFORE_CAPTCHA
+  }
+
+  /**
+   * Record a wrong PIN attempt
+   * @param {string} clientIP - Client IP address
+   */
+  recordWrongAttempt(clientIP) {
+    const wrongAttempts = this.wrongAttempts.get(clientIP) || []
+    wrongAttempts.push(Date.now())
+    this.wrongAttempts.set(clientIP, wrongAttempts)
   }
 
   /**
@@ -59,6 +88,22 @@ export class BucketService {
   }
 
   /**
+   * Verify reCAPTCHA token with server
+   * @param {string} token - reCAPTCHA token
+   * @returns {Promise<boolean>} Whether verification succeeded
+   */
+  async verifyRecaptcha(token) {
+    try {
+      const verifyRecaptcha = httpsCallable(this.functions, 'verifyRecaptcha')
+      const result = await verifyRecaptcha({ token })
+      return result.data.success
+    } catch (error) {
+      console.error('reCAPTCHA verification failed:', error)
+      return false
+    }
+  }
+
+  /**
    * Create a new bucket with retry logic for PIN conflicts
    * @param {object} bucketData - Bucket creation data
    * @param {string} userId - User ID of the bucket owner
@@ -70,7 +115,7 @@ export class BucketService {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         // Generate a PIN code
-        const pinCode = generatePinCode()
+        const pinCode = await this.generateUniquePinCode()
         const hashedPin = await this.hashPin(pinCode)
         
         const bucket = new Bucket({
@@ -78,11 +123,11 @@ export class BucketService {
           ownerId: userId,
           ownerEmail: bucketData.ownerEmail,
           owner: bucketData.owner,
-          pinCode, // Stored temporarily in memory
-          hashedPin // Only this is stored in database
+          pinCode: pinCode, // Store temporarily for owner
+          hashedPin: hashedPin // Store permanently for verification
         })
 
-        // Try to add to Firestore (toFirestore method will exclude pinCode)
+        // Try to add to Firestore (toFirestore method will exclude pinCode for new buckets)
         const docRef = await addDoc(collection(db, COLLECTIONS.BUCKETS), bucket.toFirestore())
         bucket.id = docRef.id
 
@@ -154,11 +199,12 @@ export class BucketService {
   }
 
   /**
-   * Get bucket by PIN code with rate limiting
+   * Get bucket by PIN code with rate limiting and reCAPTCHA
    * @param {string} pinCode - Bucket PIN code
+   * @param {string|null} recaptchaToken - reCAPTCHA token if required
    * @returns {Promise<Bucket|null>} Bucket or null if not found
    */
-  async getBucketByPin(pinCode) {
+  async getBucketByPin(pinCode, recaptchaToken = null) {
     try {
       // Check PIN attempts
       const clientIP = await this.getClientIP()
@@ -168,11 +214,24 @@ export class BucketService {
       // Clean up old attempts (older than 1 hour)
       const recentAttempts = attempts.filter(time => now - time < 3600000)
       
-      // Check if too many attempts (more than 10 in last hour)
-      if (recentAttempts.length >= 10) {
+      // Check if too many attempts
+      if (recentAttempts.length >= SECURITY.PIN_ATTEMPTS_BEFORE_TIMEOUT) {
         const oldestAttempt = recentAttempts[0]
         const timeLeft = Math.ceil((oldestAttempt + 3600000 - now) / 60000)
         throw new Error(`Too many attempts. Please try again in ${timeLeft} minutes.`)
+      }
+
+      // Check if reCAPTCHA is required
+      if (this.isRecaptchaRequired(clientIP)) {
+        if (!recaptchaToken) {
+          throw new Error('RECAPTCHA_REQUIRED')
+        }
+        
+        // Verify reCAPTCHA token with server
+        const isValid = await this.verifyRecaptcha(recaptchaToken)
+        if (!isValid) {
+          throw new Error('Invalid reCAPTCHA. Please try again.')
+        }
       }
 
       // Add this attempt
@@ -184,7 +243,11 @@ export class BucketService {
       const bucketId = pinMappings[pinCode]
 
       if (bucketId) {
-        return await this.getBucketById(bucketId)
+        const bucket = await this.getBucketById(bucketId)
+        if (!bucket) {
+          this.recordWrongAttempt(clientIP)
+        }
+        return bucket
       }
 
       // First try finding a bucket with raw PIN (for backward compatibility)
@@ -207,16 +270,15 @@ export class BucketService {
         return bucket
       }
 
-      // If no raw PIN match, get all active buckets and check hashed PINs
-      const hashedPinQuery = query(
+      // If no raw PIN match, check buckets with hashed PINs
+      const hashedPinBuckets = query(
         collection(db, COLLECTIONS.BUCKETS),
-        where('isActive', '==', true),
-        where('hashedPin', '!=', null)
+        where('isActive', '==', true)
       )
 
-      const hashedPinSnapshot = await getDocs(hashedPinQuery)
+      const bucketSnapshot = await getDocs(hashedPinBuckets)
       
-      for (const doc of hashedPinSnapshot.docs) {
+      for (const doc of bucketSnapshot.docs) {
         const bucketData = doc.data()
         if (bucketData.hashedPin && await this.comparePin(pinCode, bucketData.hashedPin)) {
           const bucket = Bucket.fromFirestore(doc.id, bucketData)
@@ -229,9 +291,14 @@ export class BucketService {
         }
       }
 
+      // Record wrong attempt if no bucket found
+      this.recordWrongAttempt(clientIP)
       return null
+
     } catch (error) {
-      console.error('Error getting bucket by PIN:', error)
+      if (error.message !== 'RECAPTCHA_REQUIRED') {
+        console.error('Error getting bucket by PIN:', error)
+      }
       throw error
     }
   }

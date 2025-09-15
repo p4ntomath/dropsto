@@ -18,22 +18,26 @@ export class Bucket {
     this.collaborators = data.collaborators || []
     this.createdAt = data.createdAt || new Date().toISOString()
     this.updatedAt = data.updatedAt || new Date().toISOString()
-    this._pinCode = data.pinCode // Store temporarily for creation
-    this.hashedPin = data.hashedPin || null
+    this._pinCode = data.pinCode // Raw PIN code (for creation and legacy)
+    this.hashedPin = data.hashedPin // Hashed PIN (for new buckets)
     this.fileCount = data.fileCount || 0
     this.storageUsed = data.storageUsed || 0 // in bytes
     this.isActive = data.isActive !== undefined ? data.isActive : true
   }
 
-  // Getter for pinCode that only returns it if it exists (for legacy buckets)
+  // Getter for pinCode that handles both new and legacy buckets
   get pinCode() {
-    return this._pinCode || null
+    // For new buckets, only show PIN if user is the owner
+    if (this._pinCode || (!this.hashedPin && this.isOwned)) {
+      return this._pinCode;
+    }
+    return null;
   }
 
   // Only allow setting pinCode during creation
   set pinCode(value) {
     if (!this._pinCode) {
-      this._pinCode = value
+      this._pinCode = value;
     }
   }
 
@@ -117,14 +121,14 @@ export class Bucket {
       fileCount: this.fileCount,
       storageUsed: this.storageUsed,
       isActive: this.isActive
-    }
+    };
 
-    // Only include raw pinCode for legacy buckets
+    // Store raw pinCode only for legacy buckets
     if (this._pinCode && !this.hashedPin) {
-      data.pinCode = this._pinCode
+      data.pinCode = this._pinCode;
     }
 
-    return data
+    return data;
   }
 
   /**
