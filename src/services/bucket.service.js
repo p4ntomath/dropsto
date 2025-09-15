@@ -25,6 +25,7 @@ export class BucketService {
     this.buckets = new Map()
     this.listeners = []
     this.auth = getAuth()
+    this.pinAttempts = new Map() // Track PIN attempts by IP
   }
 
   /**
@@ -134,12 +135,31 @@ export class BucketService {
   }
 
   /**
-   * Get bucket by PIN code
+   * Get bucket by PIN code with rate limiting
    * @param {string} pinCode - Bucket PIN code
    * @returns {Promise<Bucket|null>} Bucket or null if not found
    */
   async getBucketByPin(pinCode) {
     try {
+      // Check PIN attempts
+      const clientIP = await this.getClientIP()
+      const attempts = this.pinAttempts.get(clientIP) || []
+      const now = Date.now()
+      
+      // Clean up old attempts (older than 1 hour)
+      const recentAttempts = attempts.filter(time => now - time < 3600000)
+      
+      // Check if too many attempts (more than 10 in last hour)
+      if (recentAttempts.length >= 10) {
+        const oldestAttempt = recentAttempts[0]
+        const timeLeft = Math.ceil((oldestAttempt + 3600000 - now) / 60000)
+        throw new Error(`Too many attempts. Please try again in ${timeLeft} minutes.`)
+      }
+
+      // Add this attempt
+      recentAttempts.push(now)
+      this.pinAttempts.set(clientIP, recentAttempts)
+
       // Check local storage first for quick access
       const pinMappings = this.getPinMappings()
       const bucketId = pinMappings[pinCode]
@@ -170,8 +190,22 @@ export class BucketService {
 
       return null
     } catch (error) {
-      console.error('Error fetching bucket by PIN:', error)
-      throw new Error('Failed to access bucket with provided PIN.')
+      console.error('Error getting bucket by PIN:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get client IP address
+   * @returns {Promise<string>} Client IP address
+   */
+  async getClientIP() {
+    try {
+      const response = await fetch('https://api.ipify.org?format=json')
+      const data = await response.json()
+      return data.ip
+    } catch (error) {
+      return 'unknown'
     }
   }
 

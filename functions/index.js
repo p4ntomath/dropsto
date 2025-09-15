@@ -22,49 +22,64 @@ initializeApp();
 setGlobalOptions({ maxInstances: 10 });
 
 /**
- * Scheduled function that runs daily at midnight UTC to clean up expired buckets
- * Buckets older than 7 days are automatically deleted along with their files
+ * Scheduled function that runs daily at midnight UTC to clean up expired and inactive buckets
+ * - Buckets older than 7 days are automatically deleted along with their files
+ * - Inactive buckets older than 24 hours are permanently deleted
  */
-exports.cleanupExpiredBuckets = onSchedule("0 0 * * *", async (event) => {
+exports.cleanupBuckets = onSchedule("0 0 * * *", async (event) => {
   const db = getFirestore();
   const storage = getStorage();
   
-  // Calculate the cutoff date (7 days ago)
+  // Calculate the cutoff dates
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const cutoffDate = sevenDaysAgo.toISOString();
+  const sevenDaysCutoff = sevenDaysAgo.toISOString();
+
+  const oneDayAgo = new Date();
+  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+  const oneDayCutoff = oneDayAgo.toISOString();
   
-  logger.info(`Starting cleanup of buckets created before: ${cutoffDate}`);
+  logger.info(`Starting cleanup of buckets:
+  - Created before (expired): ${sevenDaysCutoff}
+  - Inactive since: ${oneDayCutoff}`);
   
   try {
     // Find expired buckets (created more than 7 days ago and still active)
     const expiredBucketsQuery = await db.collection('buckets')
-      .where('createdAt', '<=', cutoffDate)
+      .where('createdAt', '<=', sevenDaysCutoff)
       .where('isActive', '==', true)
       .get();
     
-    if (expiredBucketsQuery.empty) {
-      logger.info('No expired buckets found');
+    // Find inactive buckets (marked inactive for more than 24 hours)
+    const inactiveBucketsQuery = await db.collection('buckets')
+      .where('isActive', '==', false)
+      .where('updatedAt', '<=', oneDayCutoff)
+      .get();
+    
+    if (expiredBucketsQuery.empty && inactiveBucketsQuery.empty) {
+      logger.info('No buckets to clean up');
       return null;
     }
     
-    logger.info(`Found ${expiredBucketsQuery.docs.length} expired buckets to clean up`);
+    logger.info(`Found buckets to clean up:
+    - Expired: ${expiredBucketsQuery.docs.length}
+    - Inactive: ${inactiveBucketsQuery.docs.length}`);
     
     const batch = db.batch();
     let totalFilesDeleted = 0;
     let totalStorageFreed = 0;
     
-    for (const bucketDoc of expiredBucketsQuery.docs) {
+    // Helper function to process bucket deletion
+    const processBucketDeletion = async (bucketDoc, reason) => {
       const bucketId = bucketDoc.id;
       const bucketData = bucketDoc.data();
       
-      logger.info(`Processing bucket: ${bucketData.name} (ID: ${bucketId})`);
+      logger.info(`Processing ${reason} bucket: ${bucketData.name} (ID: ${bucketId})`);
       
       try {
         // Find all files in this bucket
         const filesQuery = await db.collection('files')
           .where('bucketId', '==', bucketId)
-          .where('isActive', '==', true)
           .get();
         
         // Delete files from Firebase Storage and mark as deleted in Firestore
@@ -78,48 +93,47 @@ exports.cleanupExpiredBuckets = onSchedule("0 0 * * *", async (event) => {
               totalStorageFreed += fileData.size || 0;
               logger.info(`Deleted file from storage: ${fileData.storagePath}`);
             } catch (storageError) {
-              // Log storage deletion errors but continue with cleanup
               logger.warn(`Failed to delete file from storage: ${fileData.storagePath}`, storageError);
             }
           }
           
           // Mark file as deleted in Firestore
-          batch.update(fileDoc.ref, { 
-            isActive: false,
-            deletedAt: new Date().toISOString(),
-            deletedReason: 'bucket_expired'
-          });
-          
+          batch.delete(fileDoc.ref);
           totalFilesDeleted++;
         }
         
-        // Mark bucket as deleted
-        batch.update(bucketDoc.ref, { 
-          isActive: false,
-          deletedAt: new Date().toISOString(),
-          deletedReason: 'expired_7_days'
-        });
+        // Delete bucket document
+        batch.delete(bucketDoc.ref);
         
         logger.info(`Prepared deletion for bucket: ${bucketData.name} with ${filesQuery.docs.length} files`);
-        
       } catch (bucketError) {
         logger.error(`Error processing bucket ${bucketId}:`, bucketError);
-        // Continue with other buckets even if one fails
       }
+    };
+
+    // Process expired buckets
+    for (const bucketDoc of expiredBucketsQuery.docs) {
+      await processBucketDeletion(bucketDoc, 'expired');
+    }
+
+    // Process inactive buckets
+    for (const bucketDoc of inactiveBucketsQuery.docs) {
+      await processBucketDeletion(bucketDoc, 'inactive');
     }
     
     // Commit all deletions in a single batch
     await batch.commit();
     
     const summary = {
-      bucketsDeleted: expiredBucketsQuery.docs.length,
+      expiredBucketsDeleted: expiredBucketsQuery.docs.length,
+      inactiveBucketsDeleted: inactiveBucketsQuery.docs.length,
+      totalBucketsDeleted: expiredBucketsQuery.docs.length + inactiveBucketsQuery.docs.length,
       filesDeleted: totalFilesDeleted,
       storageFreedBytes: totalStorageFreed,
       storageFreedMB: (totalStorageFreed / (1024 * 1024)).toFixed(2)
     };
     
     logger.info('Cleanup completed successfully:', summary);
-    
     return summary;
     
   } catch (error) {
