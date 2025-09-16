@@ -384,7 +384,7 @@ export class BucketService {
 
       // If pin is being updated, encrypt it
       if (updates.pinCode) {
-        updateData.encryptedPin = encryptPIN(updates.pinCode)
+        updateData.encryptedPin = await encryptPIN(updates.pinCode)
         delete updateData.pinCode // Don't store raw pin
       }
 
