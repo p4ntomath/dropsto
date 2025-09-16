@@ -1,0 +1,7 @@
+# Security Policy and Contact Information
+Contact: mailto:security@dropsto-123.web.app
+Expires: 2026-09-17T00:00:00.000Z
+Preferred-Languages: en
+Policy: https://dropsto-123.web.app/security-policy
+Hiring: https://dropsto-123.web.app/careers
+# Please report security issues responsibly
