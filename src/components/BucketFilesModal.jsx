@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { fileService } from '../services/file.service'
 import { formatFileSize, formatDate } from '../utils/helpers'
 
-function BucketFilesModal({ bucket, isOpen, onClose }) {
+export default function BucketFilesModal({ bucket, isOpen, onClose }) {
   const [files, setFiles] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -13,12 +13,17 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
   const fileInputRef = useRef(null)
 
   useEffect(() => {
-    if (isOpen && bucket) {
+    if (isOpen && bucket?.id) {
       loadFiles()
     }
-  }, [isOpen, bucket])
+  }, [isOpen, bucket?.id])
 
   const loadFiles = async () => {
+    if (!bucket?.id) {
+      setError('Invalid bucket')
+      return
+    }
+
     setIsLoading(true)
     setError('')
     try {
@@ -47,7 +52,8 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
-      await loadFiles()
+      const bucketFiles = await fileService.getBucketFiles(bucket.id)
+      setFiles(bucketFiles)
     } catch (error) {
       console.error('Error uploading files:', error)
       setError(error.message || 'Failed to upload files. Please try again.')
@@ -114,7 +120,7 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
     }
   }
 
-  if (!isOpen) return null
+  if (!bucket) return null
 
   return (
     <AnimatePresence>
@@ -238,5 +244,3 @@ function BucketFilesModal({ bucket, isOpen, onClose }) {
     </AnimatePresence>
   )
 }
-
-export default BucketFilesModal

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import ReCAPTCHA from 'react-google-recaptcha'
@@ -18,6 +18,13 @@ function HeroSection() {
   const recaptchaRef = useRef(null)
   const { user } = useAuth()
   const navigate = useNavigate()
+
+  // Reset reCAPTCHA when it's shown
+  useEffect(() => {
+    if (showCaptcha && recaptchaRef.current) {
+      recaptchaRef.current.reset()
+    }
+  }, [showCaptcha])
 
   const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
@@ -119,17 +126,28 @@ function HeroSection() {
         setIsModalOpen(true)
         setPin('') // Clear the PIN input
         setShowCaptcha(false) // Reset captcha state
-        if (recaptchaRef.current) {
-          recaptchaRef.current.reset()
-        }
       } else {
         setPinError('Invalid PIN code. Please check and try again.')
+        // Reset reCAPTCHA if it was used
+        if (showCaptcha && recaptchaRef.current) {
+          recaptchaRef.current.reset()
+        }
       }
     } catch (error) {
       console.error('Error retrieving bucket:', error)
       if (error.message === 'RECAPTCHA_REQUIRED') {
         setShowCaptcha(true)
         setPinError('Please verify that you are human before continuing')
+      } else if (error.message.includes('timeout-or-duplicate')) {
+        setPinError('reCAPTCHA verification expired. Please verify again.')
+        if (recaptchaRef.current) {
+          recaptchaRef.current.reset()
+        }
+      } else if (error.message.includes('Invalid reCAPTCHA')) {
+        setPinError('Invalid verification. Please try again.')
+        if (recaptchaRef.current) {
+          recaptchaRef.current.reset()
+        }
       } else {
         setPinError('Error accessing bucket. Please try again.')
       }

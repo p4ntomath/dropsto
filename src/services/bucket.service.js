@@ -11,11 +11,11 @@ import {
 } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { getFunctions, httpsCallable } from 'firebase/functions'
-import bcrypt from 'bcryptjs'
 import { db } from '../firebase/config.js'
 import { Bucket } from '../models/bucket.model.js'
 import { COLLECTIONS, STORAGE_KEYS, SECURITY } from '../utils/constants.js'
 import { generatePinCode, shouldAutoDeleteBucket } from '../utils/helpers.js'
+import { encryptPIN } from '../utils/encryption.js'
 
 /**
  * Bucket Service - Handles all bucket-related operations
@@ -68,85 +68,49 @@ export class BucketService {
   }
 
   /**
-   * Hash a PIN code
-   * @param {string} pin - PIN to hash
-   * @returns {Promise<string>} Hashed PIN
-   */
-  async hashPin(pin) {
-    const salt = await bcrypt.genSalt(10)
-    return bcrypt.hash(pin, salt)
-  }
-
-  /**
-   * Compare a PIN with a hash
-   * @param {string} pin - PIN to check
-   * @param {string} hash - Hash to compare against
-   * @returns {Promise<boolean>} Whether they match
-   */
-  async comparePin(pin, hash) {
-    return bcrypt.compare(pin, hash)
-  }
-
-  /**
-   * Verify reCAPTCHA token with server
-   * @param {string} token - reCAPTCHA token
-   * @returns {Promise<boolean>} Whether verification succeeded
-   */
-  async verifyRecaptcha(token) {
-    try {
-      const verifyRecaptcha = httpsCallable(this.functions, 'verifyRecaptcha')
-      const result = await verifyRecaptcha({ token })
-      return result.data.success
-    } catch (error) {
-      console.error('reCAPTCHA verification failed:', error)
-      return false
-    }
-  }
-
-  /**
    * Create a new bucket with retry logic for PIN conflicts
    * @param {object} bucketData - Bucket creation data
    * @param {string} userId - User ID of the bucket owner
    * @returns {Promise<Bucket>} Created bucket
    */
   async createBucket(bucketData, userId) {
-    const maxRetries = 5
+    const maxRetries = 5;
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         // Generate a PIN code
-        const pinCode = await this.generateUniquePinCode()
-        const hashedPin = await this.hashPin(pinCode)
-        
+        const pinCode = await this.generateUniquePinCode();
         const bucket = new Bucket({
           ...bucketData,
           ownerId: userId,
           ownerEmail: bucketData.ownerEmail,
           owner: bucketData.owner,
           pinCode: pinCode, // Store temporarily for owner
-          hashedPin: hashedPin // Store permanently for verification
-        })
+        });
 
-        // Try to add to Firestore (toFirestore method will exclude pinCode for new buckets)
-        const docRef = await addDoc(collection(db, COLLECTIONS.BUCKETS), bucket.toFirestore())
-        bucket.id = docRef.id
+        // Set the PIN code which will encrypt it
+        await bucket.setPinCode(pinCode);
+
+        // Try to add to Firestore
+        const docRef = await addDoc(collection(db, COLLECTIONS.BUCKETS), bucket.toFirestore());
+        bucket.id = docRef.id;
 
         // Store PIN mapping locally for quick access
-        this.storePinMapping(pinCode, bucket.id)
+        this.storePinMapping(pinCode, bucket.id);
 
         // Cache the bucket
-        this.buckets.set(bucket.id, bucket)
+        this.buckets.set(bucket.id, bucket);
 
-        return bucket
+        return bucket;
       } catch (error) {
         // If it's a PIN conflict error or any other creation error, retry with a new PIN
         if (attempt === maxRetries - 1) {
-          console.error('Error creating bucket after max retries:', error)
-          throw new Error('Failed to create bucket. Please try again.')
+          console.error('Error creating bucket after max retries:', error);
+          throw new Error('Failed to create bucket. Please try again.');
         }
         
-        console.warn(`Bucket creation attempt ${attempt + 1} failed, retrying...`, error)
-        await new Promise(resolve => setTimeout(resolve, 100))
+        console.warn(`Bucket creation attempt ${attempt + 1} failed, retrying...`, error);
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
   }
@@ -207,99 +171,116 @@ export class BucketService {
   async getBucketByPin(pinCode, recaptchaToken = null) {
     try {
       // Check PIN attempts
-      const clientIP = await this.getClientIP()
-      const attempts = this.pinAttempts.get(clientIP) || []
-      const now = Date.now()
+      const clientIP = await this.getClientIP();
+      const attempts = this.pinAttempts.get(clientIP) || [];
+      const now = Date.now();
       
       // Clean up old attempts (older than 1 hour)
-      const recentAttempts = attempts.filter(time => now - time < 3600000)
+      const recentAttempts = attempts.filter(time => now - time < 3600000);
       
       // Check if too many attempts
       if (recentAttempts.length >= SECURITY.PIN_ATTEMPTS_BEFORE_TIMEOUT) {
-        const oldestAttempt = recentAttempts[0]
-        const timeLeft = Math.ceil((oldestAttempt + 3600000 - now) / 60000)
-        throw new Error(`Too many attempts. Please try again in ${timeLeft} minutes.`)
+        const oldestAttempt = recentAttempts[0];
+        const timeLeft = Math.ceil((oldestAttempt + 3600000 - now) / 60000);
+        throw new Error(`Too many attempts. Please try again in ${timeLeft} minutes.`);
       }
 
       // Check if reCAPTCHA is required
       if (this.isRecaptchaRequired(clientIP)) {
         if (!recaptchaToken) {
-          throw new Error('RECAPTCHA_REQUIRED')
+          throw new Error('RECAPTCHA_REQUIRED');
         }
         
         // Verify reCAPTCHA token with server
-        const isValid = await this.verifyRecaptcha(recaptchaToken)
+        const isValid = await this.verifyRecaptcha(recaptchaToken);
         if (!isValid) {
-          throw new Error('Invalid reCAPTCHA. Please try again.')
+          throw new Error('Invalid reCAPTCHA. Please try again.');
         }
       }
 
       // Add this attempt
-      recentAttempts.push(now)
-      this.pinAttempts.set(clientIP, recentAttempts)
+      recentAttempts.push(now);
+      this.pinAttempts.set(clientIP, recentAttempts);
 
       // Check local storage first for quick access
-      const pinMappings = this.getPinMappings()
-      const bucketId = pinMappings[pinCode]
+      const pinMappings = this.getPinMappings();
+      const bucketId = pinMappings[pinCode];
 
       if (bucketId) {
-        const bucket = await this.getBucketById(bucketId)
-        if (!bucket) {
-          this.recordWrongAttempt(clientIP)
+        const bucket = await this.getBucketById(bucketId);
+        if (bucket) {
+          return bucket;
         }
-        return bucket
       }
 
-      // First try finding a bucket with raw PIN (for backward compatibility)
+      // First try finding a bucket with raw PIN (legacy format)
       const rawPinQuery = query(
         collection(db, COLLECTIONS.BUCKETS), 
         where('pinCode', '==', pinCode),
         where('isActive', '==', true)
-      )
+      );
       
-      const rawPinSnapshot = await getDocs(rawPinQuery)
+      const rawPinSnapshot = await getDocs(rawPinQuery);
       
       if (!rawPinSnapshot.empty) {
-        const doc = rawPinSnapshot.docs[0]
-        const bucket = Bucket.fromFirestore(doc.id, doc.data())
+        const doc = rawPinSnapshot.docs[0];
+        const bucket = Bucket.fromFirestore(doc.id, doc.data());
+        
+        // For legacy buckets, set the PIN directly without encryption
+        bucket._pinCode = pinCode;
         
         // Update local PIN mapping
-        this.storePinMapping(pinCode, bucket.id)
-        this.buckets.set(bucket.id, bucket)
+        this.storePinMapping(pinCode, bucket.id);
+        this.buckets.set(bucket.id, bucket);
         
-        return bucket
+        return bucket;
       }
 
-      // If no raw PIN match, check buckets with hashed PINs
-      const hashedPinBuckets = query(
+      // Then check buckets with encrypted PINs
+      const encryptedPinBuckets = query(
         collection(db, COLLECTIONS.BUCKETS),
         where('isActive', '==', true)
-      )
-
-      const bucketSnapshot = await getDocs(hashedPinBuckets)
+      );
+      
+      const bucketSnapshot = await getDocs(encryptedPinBuckets);
       
       for (const doc of bucketSnapshot.docs) {
-        const bucketData = doc.data()
-        if (bucketData.hashedPin && await this.comparePin(pinCode, bucketData.hashedPin)) {
-          const bucket = Bucket.fromFirestore(doc.id, bucketData)
-          
+        const bucket = Bucket.fromFirestore(doc.id, doc.data());
+        const decryptedPin = await bucket.getPinCode();
+        
+        if (decryptedPin === pinCode) {
           // Update local PIN mapping
-          this.storePinMapping(pinCode, bucket.id)
-          this.buckets.set(bucket.id, bucket)
+          this.storePinMapping(pinCode, bucket.id);
+          this.buckets.set(bucket.id, bucket);
           
-          return bucket
+          return bucket;
         }
       }
 
       // Record wrong attempt if no bucket found
-      this.recordWrongAttempt(clientIP)
-      return null
-
+      this.recordWrongAttempt(clientIP);
+      return null;
     } catch (error) {
       if (error.message !== 'RECAPTCHA_REQUIRED') {
-        console.error('Error getting bucket by PIN:', error)
+        console.error('Error getting bucket by PIN:', error);
       }
-      throw error
+      throw error;
+    }
+  }
+
+  /**
+   * Verify reCAPTCHA token with Firebase Function
+   * @param {string} token - reCAPTCHA token to verify
+   * @returns {Promise<boolean>} Whether the token is valid
+   */
+  async verifyRecaptcha(token) {
+    try {
+      const verifyRecaptchaFunction = httpsCallable(this.functions, 'verifyRecaptcha')
+      const result = await verifyRecaptchaFunction({ token })
+      return result.data.success
+    } catch (error) {
+      console.error('Error verifying reCAPTCHA:', error)
+      return false
     }
   }
 
@@ -394,6 +375,12 @@ export class BucketService {
         updatedAt: new Date().toISOString()
       }
 
+      // If pin is being updated, encrypt it
+      if (updates.pinCode) {
+        updateData.encryptedPin = encryptPIN(updates.pinCode)
+        delete updateData.pinCode // Don't store raw pin
+      }
+
       await updateDoc(docRef, updateData)
 
       // Update cache
@@ -406,8 +393,6 @@ export class BucketService {
       // Fetch updated bucket if not in cache
       return await this.getBucketById(bucketId)
     } catch (error) {
-      console.error('Error updating bucket:', error)
-      throw new Error('Failed to update bucket.')
     }
   }
 
