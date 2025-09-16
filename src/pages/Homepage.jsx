@@ -876,11 +876,21 @@ function Homepage() {
                     {createdBucketPin}
                   </code>
                   <button
-                    onClick={() => navigator.clipboard.writeText(createdBucketPin)}
-                    className="ml-3 p-2 text-gray-400 hover:text-gray-600 rounded"
+                    onClick={(e) => {
+                      navigator.clipboard.writeText(createdBucketPin);
+                      // Show a tooltip or notification that PIN was copied
+                      const tooltip = document.createElement('div');
+                      tooltip.className = 'fixed bg-black text-white px-2 py-1 rounded text-xs z-50';
+                      tooltip.textContent = 'PIN copied!';
+                      tooltip.style.left = `${e.pageX}px`;
+                      tooltip.style.top = `${e.pageY - 30}px`;
+                      document.body.appendChild(tooltip);
+                      setTimeout(() => tooltip.remove(), 1000);
+                    }}
+                    className="ml-3 p-2 text-gray-400 hover:text-gray-600 rounded group"
                     title="Copy PIN"
                   >
-                    <img src={copyIcon} alt="Copy" className="w-5 h-5" />
+                    <img src={copyIcon} alt="Copy" className="w-5 h-5 opacity-50 group-hover:opacity-70 transition-opacity" />
                   </button>
                 </div>
               </div>

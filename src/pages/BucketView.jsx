@@ -20,6 +20,8 @@ function BucketView() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
   const [deletingFileId, setDeletingFileId] = useState(null) // Track which file is being deleted
+  const [bucketPin, setBucketPin] = useState(null)
+  const [copyingPin, setCopyingPin] = useState(false)
   
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)
@@ -42,7 +44,7 @@ function BucketView() {
     loadBucketData()
   }, [bucketId])
 
-  // Enhanced loadBucketData with better error handling
+  // Enhanced loadBucketData with PIN retrieval
   const loadBucketData = async () => {
     try {
       setLoading(true)
@@ -55,6 +57,12 @@ function BucketView() {
         return
       }
       setBucket(bucketData)
+
+      // Load bucket PIN if owned
+      if (bucketData.isOwned) {
+        const pin = await bucketData.getPinCode()
+        setBucketPin(pin)
+      }
 
       // Load files in the bucket
       const bucketFiles = await fileService.getBucketFiles(bucketId)
@@ -308,6 +316,29 @@ function BucketView() {
     }
   }
 
+  // Handle PIN copy with visual feedback
+  const handleCopyPin = async (e) => {
+    if (!bucketPin || copyingPin) return
+    
+    try {
+      setCopyingPin(true)
+      await navigator.clipboard.writeText(bucketPin)
+      
+      // Show temporary tooltip
+      const tooltip = document.createElement('div')
+      tooltip.className = 'fixed bg-black text-white px-2 py-1 rounded text-xs z-50'
+      tooltip.textContent = 'PIN copied!'
+      tooltip.style.left = `${e.pageX}px`
+      tooltip.style.top = `${e.pageY - 30}px`
+      document.body.appendChild(tooltip)
+      setTimeout(() => tooltip.remove(), 1000)
+    } catch (err) {
+      console.error('Failed to copy PIN:', err)
+    } finally {
+      setCopyingPin(false)
+    }
+  }
+
   // File type icons
   const getFileIcon = (type, className = "w-6 h-6") => {
     const fileIcons = {
@@ -518,18 +549,23 @@ function BucketView() {
               </div>
             </div>
             
-            {bucket.pinCode && (
+            {bucketPin && (
               <div className="text-left lg:text-right">
                 <p className="text-sm text-gray-500 mb-1">Bucket PIN</p>
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(bucket.pinCode)
-                    showNotification('success', 'PIN Copied', 'Bucket PIN copied to clipboard', [])
-                  }}
-                  className="text-base lg:text-lg font-mono font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded border border-blue-200 transition-colors"
+                  onClick={handleCopyPin}
+                  disabled={copyingPin}
+                  className="text-base lg:text-lg font-mono font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded border border-blue-200 transition-colors flex items-center space-x-2"
                   title="Click to copy PIN"
                 >
-                  {bucket.pinCode}
+                  <span>{bucketPin}</span>
+                  {copyingPin ? (
+                    <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
+                  ) : (
+                    <svg className="w-4 h-4 text-blue-600/50 group-hover:text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                    </svg>
+                  )}
                 </button>
               </div>
             )}
