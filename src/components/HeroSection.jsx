@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
 import BucketFilesModal from './BucketFilesModal'
 import { PIN_LENGTH, SECURITY } from '../utils/constants'
+import Logger from '../utils/logger.js'
 
 function HeroSection() {
   const [pin, setPin] = useState('')
@@ -134,7 +135,7 @@ function HeroSection() {
         }
       }
     } catch (error) {
-      console.error('Error retrieving bucket:', error)
+      Logger.error('Error retrieving bucket:', error)
       if (error.message === 'RECAPTCHA_REQUIRED') {
         setShowCaptcha(true)
         setPinError('Please verify that you are human before continuing')

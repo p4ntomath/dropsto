@@ -6,6 +6,7 @@ import { bucketService } from '../services/bucket.service'
 import { fileService } from '../services/file.service'
 import { getDaysUntilExpiration, getExpirationStatus, formatDate } from '../utils/helpers'
 import potIcon from '../assets/potIcon.png'
+import Logger from '../utils/logger.js'
 
 function BucketView() {
   const { bucketId } = useParams()
@@ -68,7 +69,7 @@ function BucketView() {
       const bucketFiles = await fileService.getBucketFiles(bucketId)
       setFiles(bucketFiles)
     } catch (err) {
-      console.error('Error loading bucket data:', err)
+      Logger.error('Error loading bucket data:', err)
       setError(err.message || 'Failed to load bucket data')
     } finally {
       setLoading(false)
@@ -123,7 +124,7 @@ function BucketView() {
         )
       }
     } catch (error) {
-      console.error('Upload error:', error)
+      Logger.error('Upload error:', error)
       showNotification(
         'error',
         'Upload Failed',
@@ -155,7 +156,7 @@ function BucketView() {
         []
       )
     } catch (error) {
-      console.error('Delete error:', error)
+      Logger.error('Delete error:', error)
       showNotification(
         'error',
         'Delete Failed',
@@ -178,7 +179,7 @@ function BucketView() {
         setBucket(updatedBucket)
       }
     } catch (error) {
-      console.error('Error refreshing bucket data:', error)
+      Logger.error('Error refreshing bucket data:', error)
     }
   }
 
@@ -205,7 +206,7 @@ function BucketView() {
         []
       )
     } catch (error) {
-      console.error('Rename error:', error)
+      Logger.error('Rename error:', error)
       showNotification(
         'error',
         'Rename Failed',
@@ -236,7 +237,7 @@ function BucketView() {
         []
       )
     } catch (error) {
-      console.error('Download error:', error)
+      Logger.error('Download error:', error)
       showNotification(
         'error',
         'Download Failed',
@@ -282,7 +283,7 @@ function BucketView() {
       }, 2000)
       
     } catch (error) {
-      console.error('Delete bucket error:', error)
+      Logger.error('Delete bucket error:', error)
       showNotification(
         'error',
         'Delete Failed',
@@ -333,7 +334,7 @@ function BucketView() {
       document.body.appendChild(tooltip)
       setTimeout(() => tooltip.remove(), 1000)
     } catch (err) {
-      console.error('Failed to copy PIN:', err)
+      Logger.error('Failed to copy PIN:', err)
     } finally {
       setCopyingPin(false)
     }

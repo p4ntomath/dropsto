@@ -8,6 +8,7 @@ import { BUCKET_COLORS, BUCKET_ICONS } from '../utils/constants'
 import { getDaysUntilExpiration, getExpirationStatus } from '../utils/helpers'
 import potIcon from '../assets/potIcon.png'
 import copyIcon from '../assets/copy.svg'
+import Logger from '../utils/logger.js'
 
 function Homepage() {
   const navigate = useNavigate()
@@ -61,7 +62,7 @@ function Homepage() {
       // Handle bucket creation
       await handleBucketCreated(bucket)
     } catch (error) {
-      console.error('Error creating bucket:', error)
+      Logger.error('Error creating bucket:', error)
       // Error is handled by the hook
     } finally {
       setIsCreatingBucket(false)
@@ -83,7 +84,7 @@ function Homepage() {
         setSelectedBucket(updatedBucket);
       });
     } catch (error) {
-      console.error('Error handling bucket creation:', error);
+      Logger.error('Error handling bucket creation:', error);
       // Handle error appropriately
     }
   };
@@ -98,7 +99,7 @@ function Homepage() {
             const pin = await bucket.getPinCode();
             pins[bucket.id] = pin;
           } catch (error) {
-            console.error('Error loading bucket PIN:', error);
+            Logger.error('Error loading bucket PIN:', error);
           }
         }
       }
@@ -116,7 +117,7 @@ function Homepage() {
       await logout()
       navigate('/auth')
     } catch (error) {
-      console.error('Logout error:', error)
+      Logger.error('Logout error:', error)
     }
   }
 
@@ -125,7 +126,7 @@ function Homepage() {
     try {
       await deleteBucketService(bucketId)
     } catch (error) {
-      console.error('Error deleting bucket:', error)
+      Logger.error('Error deleting bucket:', error)
     }
   }
 

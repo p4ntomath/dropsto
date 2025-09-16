@@ -1,12 +1,17 @@
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
-  signOut,
+  signOut as firebaseSignOut,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  GoogleAuthProvider
 } from 'firebase/auth'
 import { auth, googleProvider } from '../firebase/config.js'
 import { User } from '../models/user.model.js'
+import Logger from '../utils/logger.js'
 
 /**
  * Authentication Service - Handles all Firebase Auth operations
@@ -28,7 +33,7 @@ export class AuthService {
       await setPersistence(auth, browserLocalPersistence)
       this.initialized = true
     } catch (error) {
-      console.error('Error setting auth persistence:', error)
+      Logger.error('Error setting auth persistence:', error)
       throw error
     }
   }
@@ -58,11 +63,12 @@ export class AuthService {
         await this.init()
       }
       
-      const result = await signInWithPopup(auth, googleProvider)
+      const provider = new GoogleAuthProvider()
+      const result = await signInWithPopup(auth, provider)
       this.currentUser = new User(result.user)
       return this.currentUser
     } catch (error) {
-      console.error('Google sign-in error:', error)
+      Logger.error('Google sign-in error:', error)
       throw this.handleAuthError(error)
     }
   }
@@ -73,10 +79,10 @@ export class AuthService {
    */
   async signOut() {
     try {
-      await signOut(auth)
+      await firebaseSignOut(auth)
       this.currentUser = null
     } catch (error) {
-      console.error('Sign out error:', error)
+      Logger.error('Sign out error:', error)
       throw this.handleAuthError(error)
     }
   }
@@ -127,6 +133,52 @@ export class AuthService {
   destroy() {
     this.authListeners.forEach(unsubscribe => unsubscribe())
     this.authListeners = []
+  }
+
+  /**
+   * Login with email and password
+   * @param {string} email - User email
+   * @param {string} password - User password
+   * @returns {Promise<User>} Authenticated user
+   */
+  async login(email, password) {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      return userCredential.user
+    } catch (error) {
+      Logger.error('Login error:', error)
+      throw new Error('Failed to login')
+    }
+  }
+
+  /**
+   * Register with email and password
+   * @param {string} email - User email
+   * @param {string} password - User password
+   * @returns {Promise<User>} Registered user
+   */
+  async register(email, password) {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      return userCredential.user
+    } catch (error) {
+      Logger.error('Registration error:', error)
+      throw new Error('Failed to register')
+    }
+  }
+
+  /**
+   * Reset password
+   * @param {string} email - User email
+   * @returns {Promise<void>}
+   */
+  async resetPassword(email) {
+    try {
+      await sendPasswordResetEmail(auth, email)
+    } catch (error) {
+      Logger.error('Password reset error:', error)
+      throw new Error('Failed to send password reset email')
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { authService } from '../services/auth.service.js'
+import Logger from '../utils/logger.js'
 
 const AuthContext = createContext({})
 
@@ -34,6 +35,7 @@ export const AuthProvider = ({ children }) => {
       const user = await authService.signInWithGoogle()
       return user
     } catch (error) {
+      Logger.error('Login error:', error)
       setError(error.message)
       throw error
     } finally {
@@ -47,7 +49,7 @@ export const AuthProvider = ({ children }) => {
       await authService.signOut()
       setUser(null)
     } catch (error) {
-      console.error('Error signing out:', error)
+      Logger.error('Logout error:', error)
     }
   }
 

@@ -1,3 +1,5 @@
+import Logger from './logger.js';
+
 // ----------------------
 // CONFIG
 // ----------------------
@@ -81,7 +83,7 @@ async function encryptPIN(pin) {
     const combined = new Uint8Array([...iv, ...new Uint8Array(encrypted)]);
     return ab2base64(combined);
   } catch (err) {
-    console.error('Encryption error:', err);
+    Logger.error('Encryption error:', err);
     return null;
   }
 }
@@ -107,7 +109,7 @@ async function decryptPIN(encryptedData) {
     const decoder = new TextDecoder();
     return decoder.decode(decrypted);
   } catch (err) {
-    console.error('Decryption error:', err);
+    Logger.error('Decryption error:', err);
     return null;
   }
 }
@@ -122,7 +124,7 @@ async function hashPIN(pin) {
     );
     return ab2base64(signature);
   } catch (err) {
-    console.error('Hashing error:', err);
+    Logger.error('Hashing error:', err);
     return null;
   }
 }

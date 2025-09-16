@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { bucketService } from '../services/bucket.service.js'
 import { useAuth } from '../contexts/AuthContext.jsx'
+import Logger from '../utils/logger.js'
 
 /**
  * Custom hook for managing buckets
@@ -53,7 +54,7 @@ export const useBuckets = () => {
 
       setBuckets(allBuckets)
     } catch (err) {
-      console.error('Error loading buckets:', err)
+      Logger.error('Error loading buckets:', err)
       
       // Provide more specific error messages
       let errorMessage = 'Failed to load buckets. Please try again.'
@@ -102,7 +103,7 @@ export const useBuckets = () => {
       
       return newBucket
     } catch (err) {
-      console.error('Error creating bucket:', err)
+      Logger.error('Error creating bucket:', err)
       setError(err.message)
       throw err
     }
@@ -116,7 +117,7 @@ export const useBuckets = () => {
       // Remove from local state
       setBuckets(prev => prev.filter(bucket => bucket.id !== bucketId))
     } catch (err) {
-      console.error('Error deleting bucket:', err)
+      Logger.error('Error deleting bucket:', err)
       setError(err.message)
       throw err
     }
@@ -134,7 +135,7 @@ export const useBuckets = () => {
       
       return updatedBucket
     } catch (err) {
-      console.error('Error updating bucket:', err)
+      Logger.error('Error updating bucket:', err)
       setError(err.message)
       throw err
     }
@@ -154,7 +155,7 @@ export const useBuckets = () => {
       const bucket = await bucketService.getBucketByPin(pinCode)
       return bucket
     } catch (err) {
-      console.error('Error getting bucket by PIN:', err)
+      Logger.error('Error getting bucket by PIN:', err)
       setError(err.message)
       throw err
     }

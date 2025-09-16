@@ -7,7 +7,8 @@ import {
   updateDoc, 
   query, 
   where, 
-  onSnapshot
+  onSnapshot,
+  orderBy
 } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { getFunctions, httpsCallable } from 'firebase/functions'
@@ -16,6 +17,7 @@ import { Bucket } from '../models/bucket.model.js'
 import { COLLECTIONS, STORAGE_KEYS, SECURITY } from '../utils/constants.js'
 import { generatePinCode, shouldAutoDeleteBucket } from '../utils/helpers.js'
 import { encryptPIN, hashPIN } from '../utils/encryption.js'
+import Logger from '../utils/logger.js'
 
 /**
  * Bucket Service - Handles all bucket-related operations
@@ -102,11 +104,11 @@ export class BucketService {
       } catch (error) {
         // If it's the last attempt, throw the error
         if (attempt === maxRetries - 1) {
-          console.error('Error creating bucket after max retries:', error);
+          Logger.error('Error creating bucket after max retries:', error);
           throw new Error('Failed to create bucket. Please try again.');
         }
         
-        console.warn(`Bucket creation attempt ${attempt + 1} failed, retrying...`, error);
+        Logger.warn(`Bucket creation attempt ${attempt + 1} failed, retrying...`, error);
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
@@ -125,7 +127,7 @@ export class BucketService {
         
         // Check if bucket should be auto-deleted
         if (shouldAutoDeleteBucket(bucket.createdAt)) {
-          console.log(`Auto-deleting expired bucket: ${bucket.name} (${bucket.id})`)
+          Logger.info(`Auto-deleting expired bucket: ${bucket.name} (${bucket.id})`);
           await this.autoDeleteExpiredBucket(bucketId)
           return null // Bucket was auto-deleted
         }
@@ -142,7 +144,7 @@ export class BucketService {
         
         // Check if bucket should be auto-deleted before creating instance
         if (shouldAutoDeleteBucket(bucketData.createdAt)) {
-          console.log(`Auto-deleting expired bucket: ${bucketData.name} (${bucketId})`)
+          Logger.info(`Auto-deleting expired bucket: ${bucketData.name} (${bucketId})`);
           await this.autoDeleteExpiredBucket(bucketId)
           return null // Bucket was auto-deleted
         }
@@ -154,7 +156,7 @@ export class BucketService {
 
       return null
     } catch (error) {
-      console.error('Error fetching bucket:', error)
+      Logger.error('Error fetching bucket:', error);
       throw new Error('Failed to fetch bucket data.')
     }
   }
@@ -250,7 +252,7 @@ export class BucketService {
 
     } catch (error) {
       if (error.message !== 'RECAPTCHA_REQUIRED') {
-        console.error('Error getting bucket by PIN:', error);
+        Logger.error('Error getting bucket by PIN:', error);
       }
       throw error;
     }
@@ -267,7 +269,7 @@ export class BucketService {
       const result = await verifyRecaptchaFunction({ token })
       return result.data.success
     } catch (error) {
-      console.error('Error verifying reCAPTCHA:', error)
+      Logger.error('Error verifying reCAPTCHA:', error);
       return false
     }
   }
@@ -296,7 +298,8 @@ export class BucketService {
       const q = query(
         collection(db, COLLECTIONS.BUCKETS),
         where('ownerId', '==', userId),
-        where('isActive', '==', true)
+        where('isActive', '==', true),
+        orderBy('createdAt', 'desc')
       )
 
       const querySnapshot = await getDocs(q)
@@ -381,6 +384,8 @@ export class BucketService {
       // Fetch updated bucket if not in cache
       return await this.getBucketById(bucketId)
     } catch (error) {
+      Logger.error('Error updating bucket:', error);
+      throw error
     }
   }
 
@@ -396,7 +401,7 @@ export class BucketService {
       // Remove from cache
       this.buckets.delete(bucketId)
     } catch (error) {
-      console.error('Error deleting bucket:', error)
+      Logger.error('Error deleting bucket:', error);
       throw new Error('Failed to delete bucket.')
     }
   }
@@ -417,7 +422,10 @@ export class BucketService {
       } else {
         callback(null)
       }
-    })
+    }, (error) => {
+      Logger.error('Error listening to bucket:', error);
+      callback(null);
+    });
 
     this.listeners.push(unsubscribe)
     return unsubscribe
@@ -430,7 +438,7 @@ export class BucketService {
    */
   async autoDeleteExpiredBucket(bucketId) {
     try {
-      console.log(`Starting auto-deletion of expired bucket: ${bucketId}`)
+      Logger.info(`Starting auto-deletion of expired bucket: ${bucketId}`);
       
       // Import fileService to delete bucket files
       const { fileService } = await import('./file.service.js')
@@ -448,9 +456,9 @@ export class BucketService {
       // Remove from cache
       this.buckets.delete(bucketId)
       
-      console.log(`Successfully auto-deleted expired bucket: ${bucketId}`)
+      Logger.info(`Successfully auto-deleted expired bucket: ${bucketId}`);
     } catch (error) {
-      console.error(`Error auto-deleting expired bucket ${bucketId}:`, error)
+      Logger.error(`Error auto-deleting expired bucket ${bucketId}:`, error);
       // Don't throw error to prevent disrupting user experience
     }
   }
@@ -473,12 +481,12 @@ export class BucketService {
       }
       
       if (cleanedCount > 0) {
-        console.log(`Cleaned up ${cleanedCount} expired buckets for user ${userId}`)
+        Logger.info(`Cleaned up ${cleanedCount} expired buckets for user ${userId}`);
       }
       
       return cleanedCount
     } catch (error) {
-      console.error('Error during user bucket cleanup:', error)
+      Logger.error('Error during user bucket cleanup:', error);
       return 0
     }
   }

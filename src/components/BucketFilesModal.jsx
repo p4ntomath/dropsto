@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fileService } from '../services/file.service'
 import { formatFileSize, formatDate } from '../utils/helpers'
+import Logger from '../utils/logger.js'
 
 export default function BucketFilesModal({ bucket, isOpen, onClose }) {
   const [files, setFiles] = useState([])
@@ -30,7 +31,7 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
       const bucketFiles = await fileService.getBucketFiles(bucket.id)
       setFiles(bucketFiles)
     } catch (error) {
-      console.error('Error loading files:', error)
+      Logger.error('Error loading files:', error)
       setError('Failed to load files. Please try again.')
     } finally {
       setIsLoading(false)
@@ -55,7 +56,7 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
       const bucketFiles = await fileService.getBucketFiles(bucket.id)
       setFiles(bucketFiles)
     } catch (error) {
-      console.error('Error uploading files:', error)
+      Logger.error('Error uploading files:', error)
       setError(error.message || 'Failed to upload files. Please try again.')
     } finally {
       setIsUploading(false)
@@ -86,7 +87,7 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
       document.body.removeChild(link)
       URL.revokeObjectURL(objectUrl)
     } catch (error) {
-      console.error('Error downloading file:', error)
+      Logger.error('Error downloading file:', error)
       setError('Failed to download file. Please try again.')
     } finally {
       setTimeout(() => {
