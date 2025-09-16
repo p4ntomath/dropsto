@@ -1,12 +1,14 @@
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
-  signOut,
+  signOut as firebaseSignOut,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  GoogleAuthProvider
 } from 'firebase/auth'
 import { auth, googleProvider } from '../firebase/config.js'
 import { User } from '../models/user.model.js'
+import Logger from '../utils/logger.js'
 
 /**
  * Authentication Service - Handles all Firebase Auth operations
@@ -28,7 +30,7 @@ export class AuthService {
       await setPersistence(auth, browserLocalPersistence)
       this.initialized = true
     } catch (error) {
-      console.error('Error setting auth persistence:', error)
+      Logger.error('Error setting auth persistence:', error)
       throw error
     }
   }
@@ -58,11 +60,12 @@ export class AuthService {
         await this.init()
       }
       
-      const result = await signInWithPopup(auth, googleProvider)
+      const provider = new GoogleAuthProvider()
+      const result = await signInWithPopup(auth, provider)
       this.currentUser = new User(result.user)
       return this.currentUser
     } catch (error) {
-      console.error('Google sign-in error:', error)
+      Logger.error('Google sign-in error:', error)
       throw this.handleAuthError(error)
     }
   }
@@ -73,10 +76,10 @@ export class AuthService {
    */
   async signOut() {
     try {
-      await signOut(auth)
+      await firebaseSignOut(auth)
       this.currentUser = null
     } catch (error) {
-      console.error('Sign out error:', error)
+      Logger.error('Sign out error:', error)
       throw this.handleAuthError(error)
     }
   }
@@ -105,15 +108,9 @@ export class AuthService {
   handleAuthError(error) {
     const errorMessages = {
       'auth/user-disabled': 'Your account has been disabled. Please contact support.',
-      'auth/user-not-found': 'No account found with this email address.',
-      'auth/wrong-password': 'Incorrect password. Please try again.',
-      'auth/email-already-in-use': 'An account with this email already exists.',
-      'auth/weak-password': 'Password is too weak. Please choose a stronger password.',
-      'auth/invalid-email': 'Please enter a valid email address.',
-      'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
-      'auth/network-request-failed': 'Network error. Please check your connection.',
       'auth/popup-closed-by-user': 'Sign-in was cancelled.',
       'auth/popup-blocked': 'Sign-in popup was blocked. Please allow popups and try again.',
+      'auth/network-request-failed': 'Network error. Please check your connection.',
       'auth/api-key-not-valid': 'Firebase configuration error. Please check your API key.'
     }
 

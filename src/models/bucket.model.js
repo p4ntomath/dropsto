@@ -1,27 +1,64 @@
-import { generatePinCode } from '../utils/helpers.js'
+import { encryptPIN, decryptPIN, hashPIN } from '../utils/encryption';
+import { formatFileSize } from '../utils/helpers';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Bucket Model - Represents a storage bucket
  */
 export class Bucket {
   constructor(data = {}) {
-    this.id = data.id || Date.now()
-    this.name = data.name || ''
-    this.description = data.description || 'No description provided'
-    this.type = 'bucket'
-    this.preview = data.preview || 'folder'
-    this.color = data.color || 'from-blue-500 to-cyan-500'
-    this.owner = data.owner || ''
-    this.ownerEmail = data.ownerEmail || ''
-    this.ownerId = data.ownerId || ''
-    this.isOwned = data.isOwned !== undefined ? data.isOwned : true
-    this.collaborators = data.collaborators || []
-    this.createdAt = data.createdAt || new Date().toISOString()
-    this.updatedAt = data.updatedAt || new Date().toISOString()
-    this.pinCode = data.pinCode || generatePinCode()
-    this.fileCount = data.fileCount || 0
-    this.storageUsed = data.storageUsed || 0 // in bytes
-    this.isActive = data.isActive !== undefined ? data.isActive : true
+    this.id = data.id || null;
+    this.name = data.name || '';
+    this.description = data.description || '';
+    this.ownerId = data.ownerId || null;
+    this.ownerEmail = data.ownerEmail || null;
+    this.owner = data.owner || null;
+    this.collaborators = data.collaborators || [];
+    this.createdAt = data.createdAt || new Date().toISOString();
+    this.updatedAt = data.updatedAt || this.createdAt;
+    this.isActive = data.isActive !== false;
+    this.fileCount = data.fileCount || 0;
+    this.storageUsed = data.storageUsed || 0;
+    this.preview = data.preview || 'folder';
+    this.color = data.color || 'from-blue-500 to-cyan-500';
+    
+    // Handle PIN data
+    if (data.pinCode) {
+      this._pinCode = data.pinCode; // Legacy PIN
+    } else if (data.encryptedPin) {
+      this.encryptedPin = data.encryptedPin;
+      this.hashedPin = data.hashedPin;
+    }
+    
+    if (data.isOwned !== undefined) this.isOwned = data.isOwned;
+  }
+
+  // Getter for pinCode that handles both legacy and encrypted PINs
+  async getPinCode() {
+    // For legacy buckets, return the raw PIN
+    if (this._pinCode) {
+      return this._pinCode;
+    }
+    
+    // For encrypted PINs, decrypt only if user owns the bucket
+    if (this.isOwned && this.encryptedPin) {
+      return await decryptPIN(this.encryptedPin);
+    }
+    
+    return null;
+  }
+
+  /**
+   * Set PIN - for new buckets only
+   */
+  async setPinCode(value) {
+    if (!this.encryptedPin && !this._pinCode && value) {
+      // For new buckets, store both encrypted and hashed PINs
+      this.encryptedPin = await encryptPIN(value);
+      this.hashedPin = await hashPIN(value);
+      // Store PIN temporarily for owner
+      this._pinCode = value;
+    }
   }
 
   /**
@@ -67,20 +104,7 @@ export class Bucket {
    * @returns {string}
    */
   getFormattedSize() {
-    return this.formatFileSize(this.storageUsed)
-  }
-
-  /**
-   * Format file size helper
-   * @param {number} bytes
-   * @returns {string}
-   */
-  formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+    return formatFileSize(this.storageUsed);
   }
 
   /**
@@ -88,23 +112,29 @@ export class Bucket {
    * @returns {object}
    */
   toFirestore() {
-    return {
+    const data = {
       name: this.name,
       description: this.description,
-      type: this.type,
-      preview: this.preview,
-      color: this.color,
-      owner: this.owner,
-      ownerEmail: this.ownerEmail,
       ownerId: this.ownerId,
+      ownerEmail: this.ownerEmail,
+      owner: this.owner,
       collaborators: this.collaborators,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      pinCode: this.pinCode,
+      isActive: this.isActive,
       fileCount: this.fileCount,
       storageUsed: this.storageUsed,
-      isActive: this.isActive
+      preview: this.preview,
+      color: this.color
+    };
+
+    // Always include encrypted and hashed PIN data for new buckets
+    if (this.encryptedPin && this.hashedPin) {
+      data.encryptedPin = this.encryptedPin;
+      data.hashedPin = this.hashedPin;
     }
+
+    return data;
   }
 
   /**
@@ -116,8 +146,9 @@ export class Bucket {
   static fromFirestore(id, data) {
     return new Bucket({
       id,
-      ...data
-    })
+      ...data,
+      isOwned: data.ownerId === getAuth()?.currentUser?.uid
+    });
   }
 
   /**
@@ -129,7 +160,7 @@ export class Bucket {
       id: this.id,
       name: this.name,
       description: this.description,
-      type: this.type,
+      type: 'bucket',
       items: this.fileCount,
       size: this.getFormattedSize(),
       preview: this.preview,
@@ -139,7 +170,7 @@ export class Bucket {
       ownerEmail: this.ownerEmail,
       isOwned: this.isOwned,
       createdAt: this.createdAt,
-      pinCode: this.pinCode
-    }
+      pinCode: this._pinCode // Only include raw PIN for legacy buckets
+    };
   }
 }

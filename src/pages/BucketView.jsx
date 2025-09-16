@@ -4,8 +4,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
 import { fileService } from '../services/file.service'
-import { getDaysUntilExpiration, getExpirationStatus, formatDate } from '../utils/helpers'
+import { 
+  getDaysUntilExpiration, 
+  getExpirationStatus, 
+  formatDate, 
+  showTooltip 
+} from '../utils/helpers'
 import potIcon from '../assets/potIcon.png'
+import Logger from '../utils/logger.js'
 
 function BucketView() {
   const { bucketId } = useParams()
@@ -20,6 +26,8 @@ function BucketView() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
   const [deletingFileId, setDeletingFileId] = useState(null) // Track which file is being deleted
+  const [bucketPin, setBucketPin] = useState(null)
+  const [copyingPin, setCopyingPin] = useState(false)
   
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)
@@ -42,7 +50,7 @@ function BucketView() {
     loadBucketData()
   }, [bucketId])
 
-  // Enhanced loadBucketData with better error handling
+  // Enhanced loadBucketData with PIN retrieval
   const loadBucketData = async () => {
     try {
       setLoading(true)
@@ -56,11 +64,17 @@ function BucketView() {
       }
       setBucket(bucketData)
 
+      // Load bucket PIN if owned
+      if (bucketData.isOwned) {
+        const pin = await bucketData.getPinCode()
+        setBucketPin(pin)
+      }
+
       // Load files in the bucket
       const bucketFiles = await fileService.getBucketFiles(bucketId)
       setFiles(bucketFiles)
     } catch (err) {
-      console.error('Error loading bucket data:', err)
+      Logger.error('Error loading bucket data:', err)
       setError(err.message || 'Failed to load bucket data')
     } finally {
       setLoading(false)
@@ -115,7 +129,7 @@ function BucketView() {
         )
       }
     } catch (error) {
-      console.error('Upload error:', error)
+      Logger.error('Upload error:', error)
       showNotification(
         'error',
         'Upload Failed',
@@ -147,7 +161,7 @@ function BucketView() {
         []
       )
     } catch (error) {
-      console.error('Delete error:', error)
+      Logger.error('Delete error:', error)
       showNotification(
         'error',
         'Delete Failed',
@@ -170,7 +184,7 @@ function BucketView() {
         setBucket(updatedBucket)
       }
     } catch (error) {
-      console.error('Error refreshing bucket data:', error)
+      Logger.error('Error refreshing bucket data:', error)
     }
   }
 
@@ -197,7 +211,7 @@ function BucketView() {
         []
       )
     } catch (error) {
-      console.error('Rename error:', error)
+      Logger.error('Rename error:', error)
       showNotification(
         'error',
         'Rename Failed',
@@ -228,7 +242,7 @@ function BucketView() {
         []
       )
     } catch (error) {
-      console.error('Download error:', error)
+      Logger.error('Download error:', error)
       showNotification(
         'error',
         'Download Failed',
@@ -274,7 +288,7 @@ function BucketView() {
       }, 2000)
       
     } catch (error) {
-      console.error('Delete bucket error:', error)
+      Logger.error('Delete bucket error:', error)
       showNotification(
         'error',
         'Delete Failed',
@@ -305,6 +319,21 @@ function BucketView() {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileUpload(e.dataTransfer.files)
+    }
+  }
+
+  // Handle PIN copy with visual feedback
+  const handleCopyPin = async (e) => {
+    if (!bucketPin || copyingPin) return
+    
+    try {
+      setCopyingPin(true)
+      await navigator.clipboard.writeText(bucketPin)
+      showTooltip(e.pageX, e.pageY, 'PIN copied!')
+    } catch (err) {
+      Logger.error('Failed to copy PIN:', err)
+    } finally {
+      setCopyingPin(false)
     }
   }
 
@@ -518,18 +547,23 @@ function BucketView() {
               </div>
             </div>
             
-            {bucket.pinCode && (
+            {bucketPin && (
               <div className="text-left lg:text-right">
                 <p className="text-sm text-gray-500 mb-1">Bucket PIN</p>
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(bucket.pinCode)
-                    showNotification('success', 'PIN Copied', 'Bucket PIN copied to clipboard', [])
-                  }}
-                  className="text-base lg:text-lg font-mono font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded border border-blue-200 transition-colors"
+                  onClick={handleCopyPin}
+                  disabled={copyingPin}
+                  className="text-base lg:text-lg font-mono font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded border border-blue-200 transition-colors flex items-center space-x-2"
                   title="Click to copy PIN"
                 >
-                  {bucket.pinCode}
+                  <span>{bucketPin}</span>
+                  {copyingPin ? (
+                    <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
+                  ) : (
+                    <svg className="w-4 h-4 text-blue-600/50 group-hover:text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                    </svg>
+                  )}
                 </button>
               </div>
             )}

@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import ReCAPTCHA from 'react-google-recaptcha'
 import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
 import BucketFilesModal from './BucketFilesModal'
-import copyIcon from '../assets/copy.svg'
-import { PIN_LENGTH } from '../utils/constants'
+import { PIN_LENGTH, SECURITY } from '../utils/constants'
+import Logger from '../utils/logger.js'
 
 function HeroSection() {
   const [pin, setPin] = useState('')
@@ -14,8 +15,17 @@ function HeroSection() {
   const [selectedBucket, setSelectedBucket] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isInputFocused, setIsInputFocused] = useState(false)
+  const [showCaptcha, setShowCaptcha] = useState(false)
+  const recaptchaRef = useRef(null)
   const { user } = useAuth()
   const navigate = useNavigate()
+
+  // Reset reCAPTCHA when it's shown
+  useEffect(() => {
+    if (showCaptcha && recaptchaRef.current) {
+      recaptchaRef.current.reset()
+    }
+  }, [showCaptcha])
 
   const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
@@ -98,20 +108,50 @@ function HeroSection() {
     setPinError('')
     
     try {
-      // Use bucket service to find bucket by PIN
-      const bucket = await bucketService.getBucketByPin(pin.trim())
+      let recaptchaToken = null
+      // Get reCAPTCHA token if needed
+      if (showCaptcha && recaptchaRef.current) {
+        recaptchaToken = recaptchaRef.current.getValue()
+        if (!recaptchaToken) {
+          setPinError('Please complete the reCAPTCHA verification')
+          setIsLoading(false)
+          return
+        }
+      }
+
+      const bucket = await bucketService.getBucketByPin(pin.trim(), recaptchaToken)
       
       if (bucket) {
         // PIN is valid, show bucket files in modal
         setSelectedBucket(bucket)
         setIsModalOpen(true)
         setPin('') // Clear the PIN input
+        setShowCaptcha(false) // Reset captcha state
       } else {
         setPinError('Invalid PIN code. Please check and try again.')
+        // Reset reCAPTCHA if it was used
+        if (showCaptcha && recaptchaRef.current) {
+          recaptchaRef.current.reset()
+        }
       }
     } catch (error) {
-      console.error('Error retrieving bucket:', error)
-      setPinError('Error accessing bucket. Please try again.')
+      Logger.error('Error retrieving bucket:', error)
+      if (error.message === 'RECAPTCHA_REQUIRED') {
+        setShowCaptcha(true)
+        setPinError('Please verify that you are human before continuing')
+      } else if (error.message.includes('timeout-or-duplicate')) {
+        setPinError('reCAPTCHA verification expired. Please verify again.')
+        if (recaptchaRef.current) {
+          recaptchaRef.current.reset()
+        }
+      } else if (error.message.includes('Invalid reCAPTCHA')) {
+        setPinError('Invalid verification. Please try again.')
+        if (recaptchaRef.current) {
+          recaptchaRef.current.reset()
+        }
+      } else {
+        setPinError('Error accessing bucket. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -191,7 +231,7 @@ function HeroSection() {
                         onKeyPress={handlePinKeyPress}
                         onFocus={() => setIsInputFocused(true)}
                         onBlur={() => setIsInputFocused(false)}
-                        placeholder="drop-XXXX"
+                        placeholder="drop-xxXX"
                         className={`w-full bg-white/10 border-2 rounded-lg px-4 py-4 text-white placeholder-white/40 focus:outline-none text-center text-xl font-mono tracking-wider transition-all duration-300 ${
                           isInputFocused 
                             ? 'border-cyan-400 ring-4 ring-cyan-400/20 bg-white/15' 
@@ -225,7 +265,7 @@ function HeroSection() {
                         animate={{ opacity: 1, y: 0 }}
                         className="mt-2 text-white/50 text-xs text-center"
                       >
-                        Format: drop-XXXX (or drop-XXXXXXXX for legacy PINs)
+                        Format: drop-XXXX (any combination of letters and numbers)
                       </motion.div>
                     )}
 
@@ -245,6 +285,21 @@ function HeroSection() {
                       </motion.div>
                     )}
                   </div>
+
+                  {/* Checkbox reCAPTCHA - only show after multiple wrong attempts */}
+                  {showCaptcha && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex justify-center mt-4"
+                    >
+                      <ReCAPTCHA
+                        ref={recaptchaRef}
+                        sitekey={SECURITY.RECAPTCHA_SITE_KEY}
+                        theme="dark"
+                      />
+                    </motion.div>
+                  )}
 
                   {/* Submit Button */}
                   <button

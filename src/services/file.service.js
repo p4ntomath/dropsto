@@ -9,7 +9,8 @@ import {
   query, 
   where, 
   orderBy,
-  onSnapshot
+  onSnapshot,
+  writeBatch
 } from 'firebase/firestore'
 import { 
   ref, 
@@ -22,6 +23,7 @@ import { FileModel } from '../models/file.model.js'
 import { COLLECTIONS, STORAGE_LIMITS } from '../utils/constants.js'
 import { calculateTotalStorage } from '../utils/helpers.js'
 import { bucketService } from './bucket.service.js'
+import Logger from '../utils/logger.js'
 
 /**
  * File Service - Handles all file-related operations
@@ -55,7 +57,7 @@ export class FileService {
           const uploadedFile = await this.uploadSingleFile(file, bucketId, userId)
           uploadedFiles.push(uploadedFile)
         } catch (error) {
-          console.error(`Error uploading ${file.name}:`, error)
+          Logger.error(`Error uploading ${file.name}:`, error)
           // Continue with other files even if one fails
         }
       }
@@ -65,7 +67,7 @@ export class FileService {
 
       return uploadedFiles
     } catch (error) {
-      console.error('Error uploading files:', error)
+      Logger.error('Error uploading files:', error)
       throw error
     }
   }
@@ -129,7 +131,7 @@ export class FileService {
 
       return fileModel
     } catch (error) {
-      console.error('Error uploading single file:', error)
+      Logger.error('Error uploading single file:', error)
       
       // Provide more specific error messages
       if (error.code === 'storage/unauthorized') {
@@ -169,7 +171,7 @@ export class FileService {
 
       return files
     } catch (error) {
-      console.error('Error fetching bucket files:', error)
+      Logger.error('Error fetching bucket files:', error)
       throw new Error('Failed to fetch files.')
     }
   }
@@ -214,7 +216,7 @@ export class FileService {
         await this.updateBucketStats(file.bucketId)
       }
     } catch (error) {
-      console.error('Error deleting file:', error)
+      Logger.error('Error deleting file:', error)
       throw new Error('Failed to delete file.')
     }
   }
@@ -228,20 +230,23 @@ export class FileService {
   async deleteAllBucketFiles(bucketId, permanent = false) {
     try {
       const files = await this.getBucketFiles(bucketId)
-      
-      // Delete all files
+      const batch = writeBatch(db)
+
       for (const file of files) {
         try {
-          await this.deleteFile(file.id, permanent)
+          if (permanent && file.storagePath) {
+            await deleteObject(ref(storage, file.storagePath))
+          }
+          batch.delete(doc(db, COLLECTIONS.FILES, file.id))
         } catch (error) {
-          console.error(`Error deleting file ${file.id}:`, error)
-          // Continue with other files even if one fails
+          Logger.error(`Error deleting file ${file.id}:`, error)
         }
       }
 
-      console.log(`${permanent ? 'Permanently deleted' : 'Soft deleted'} ${files.length} files from bucket ${bucketId}`)
+      await batch.commit()
+      Logger.info(`${permanent ? 'Permanently deleted' : 'Soft deleted'} ${files.length} files from bucket ${bucketId}`)
     } catch (error) {
-      console.error(`Error deleting bucket files:`, error)
+      Logger.error(`Error deleting bucket files:`, error)
       throw error
     }
   }
@@ -269,7 +274,7 @@ export class FileService {
 
       return await this.getFileById(fileId)
     } catch (error) {
-      console.error('Error renaming file:', error)
+      Logger.error('Error renaming file:', error)
       throw new Error('Failed to rename file.')
     }
   }
@@ -296,7 +301,7 @@ export class FileService {
 
       return null
     } catch (error) {
-      console.error('Error fetching file:', error)
+      Logger.error('Error fetching file:', error)
       throw new Error('Failed to fetch file.')
     }
   }
@@ -318,7 +323,7 @@ export class FileService {
 
       return file.downloadURL
     } catch (error) {
-      console.error('Error downloading file:', error)
+      Logger.error('Error downloading file:', error)
       throw new Error('Failed to download file.')
     }
   }
@@ -339,7 +344,7 @@ export class FileService {
       // PIN users don't have authentication so we can't update Firestore
       return file.downloadURL
     } catch (error) {
-      console.error('Error downloading file for PIN user:', error)
+      Logger.error('Error downloading file for PIN user:', error)
       throw new Error('Failed to download file.')
     }
   }
@@ -367,7 +372,7 @@ export class FileService {
         lastDownloaded: new Date().toISOString()
       })
     } catch (error) {
-      console.error('Error recording download:', error)
+      Logger.error('Error recording download:', error)
       // Non-critical error, don't throw
     }
   }
@@ -414,7 +419,7 @@ export class FileService {
 
       return { valid: true }
     } catch (error) {
-      console.error('Error validating files:', error)
+      Logger.error('Error validating files:', error)
       return {
         valid: false,
         error: 'Failed to validate files. Please try again.'
@@ -443,7 +448,7 @@ export class FileService {
       
       return totalStorage
     } catch (error) {
-      console.error('Error calculating user total storage:', error)
+      Logger.error('Error calculating user total storage:', error)
       throw error
     }
   }
@@ -463,7 +468,7 @@ export class FileService {
         storageUsed
       })
     } catch (error) {
-      console.error('Error updating bucket stats:', error)
+      Logger.error('Error updating bucket stats:', error)
       // Non-critical error, don't throw
     }
   }

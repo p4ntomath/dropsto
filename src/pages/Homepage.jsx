@@ -3,10 +3,12 @@ import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useBuckets } from '../hooks/useBuckets'
+import { bucketService } from '../services/bucket.service'  // Add this line
 import { BUCKET_COLORS, BUCKET_ICONS } from '../utils/constants'
-import { getDaysUntilExpiration, getExpirationStatus } from '../utils/helpers'
+import { getDaysUntilExpiration, getExpirationStatus, showTooltip } from '../utils/helpers'
 import potIcon from '../assets/potIcon.png'
 import copyIcon from '../assets/copy.svg'
+import Logger from '../utils/logger.js'
 
 function Homepage() {
   const navigate = useNavigate()
@@ -38,6 +40,8 @@ function Homepage() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isCreatingBucket, setIsCreatingBucket] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [selectedBucket, setSelectedBucket] = useState(null)
+  const [bucketPins, setBucketPins] = useState({});
 
   // Create new bucket function using service
   const createBucket = async () => {
@@ -55,16 +59,57 @@ function Homepage() {
         preview: 'folder'
       })
       
-      // Show PIN code to user
-      setCreatedBucketPin(bucket.pinCode)
-      setShowPinModal(true)
+      // Handle bucket creation
+      await handleBucketCreated(bucket)
     } catch (error) {
-      console.error('Error creating bucket:', error)
+      Logger.error('Error creating bucket:', error)
       // Error is handled by the hook
     } finally {
       setIsCreatingBucket(false)
     }
   }
+
+  const handleBucketCreated = async (bucket) => {
+    try {
+      const pinCode = await bucket.getPinCode();
+      setCreatedBucketPin(pinCode);
+      setShowPinModal(true);
+      
+      // Start listening to bucket changes
+      bucketService.listenToBucket(bucket.id, (updatedBucket) => {
+        if (!updatedBucket) {
+          navigate('/');
+          return;
+        }
+        setSelectedBucket(updatedBucket);
+      });
+    } catch (error) {
+      Logger.error('Error handling bucket creation:', error);
+      // Handle error appropriately
+    }
+  };
+
+  // Add useEffect to load PIN codes for owned buckets
+  useEffect(() => {
+    const loadBucketPins = async () => {
+      const pins = {};
+      for (const bucket of buckets) {
+        if (bucket.isOwned) {
+          try {
+            const pin = await bucket.getPinCode();
+            pins[bucket.id] = pin;
+          } catch (error) {
+            Logger.error('Error loading bucket PIN:', error);
+          }
+        }
+      }
+      setBucketPins(pins);
+    };
+
+    if (buckets.length > 0) {
+      loadBucketPins();
+    }
+  }, [buckets]);
 
   // Handle logout
   const handleLogout = async () => {
@@ -72,7 +117,7 @@ function Homepage() {
       await logout()
       navigate('/auth')
     } catch (error) {
-      console.error('Logout error:', error)
+      Logger.error('Logout error:', error)
     }
   }
 
@@ -81,7 +126,7 @@ function Homepage() {
     try {
       await deleteBucketService(bucketId)
     } catch (error) {
-      console.error('Error deleting bucket:', error)
+      Logger.error('Error deleting bucket:', error)
     }
   }
 
@@ -125,7 +170,6 @@ function Homepage() {
   const totalStorageRemainingMB = totalStorageAvailableMB - totalStorageUsedMB
   const storagePercentage = Math.round((totalStorageUsedMB / totalStorageAvailableMB) * 100)
 
-  // ...existing code... (getIcon function remains the same)
   const getIcon = (iconName, className = "w-5 h-5") => {
     if (iconName === 'pot') {
       return <img src={potIcon} alt="Pot Icon" className={className} />
@@ -137,7 +181,6 @@ function Homepage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
       ),
-      // ...rest of icons remain the same...
       bucket: (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -662,20 +705,22 @@ function Homepage() {
                       </p>
                     )}
                     
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mt-3">
                       <div className="text-sm text-gray-500">
                         {bucket.fileCount || 0} files • {bucket.storageUsed ? bucket.getFormattedSize() : '0 Bytes'}
                       </div>
-                      {bucket.pinCode && (
+                      {bucket.isOwned && bucketPins[bucket.id] && (
                         <button
                           onClick={(e) => {
-                            e.stopPropagation()
-                            navigator.clipboard.writeText(bucket.pinCode)
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(bucketPins[bucket.id]);
+                            showTooltip(e.pageX, e.pageY, 'PIN copied!');
                           }}
-                          className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded font-mono text-gray-600 transition-colors"
-                          title={`PIN: ${bucket.pinCode} (Click to copy)`}
+                          className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded font-mono text-gray-600 transition-colors flex items-center space-x-1"
+                          title="Click to copy PIN"
                         >
-                          PIN: {bucket.pinCode}
+                          <span>PIN: {bucketPins[bucket.id]}</span>
+                          <img src={copyIcon} alt="Copy" className="w-3 h-3 opacity-50" />
                         </button>
                       )}
                     </div>
@@ -826,11 +871,14 @@ function Homepage() {
                     {createdBucketPin}
                   </code>
                   <button
-                    onClick={() => navigator.clipboard.writeText(createdBucketPin)}
-                    className="ml-3 p-2 text-gray-400 hover:text-gray-600 rounded"
+                    onClick={(e) => {
+                      navigator.clipboard.writeText(createdBucketPin);
+                      showTooltip(e.pageX, e.pageY, 'PIN copied!');
+                    }}
+                    className="ml-3 p-2 text-gray-400 hover:text-gray-600 rounded group"
                     title="Copy PIN"
                   >
-                    <img src={copyIcon} alt="Copy" className="w-5 h-5" />
+                    <img src={copyIcon} alt="Copy" className="w-5 h-5 opacity-50 group-hover:opacity-70 transition-opacity" />
                   </button>
                 </div>
               </div>
