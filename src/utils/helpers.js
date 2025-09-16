@@ -176,3 +176,20 @@ export const getBucketAgeInDays = (createdAt) => {
   const now = new Date()
   return Math.floor((now - createdDate) / (1000 * 60 * 60 * 24))
 }
+
+/**
+ * Shows a temporary tooltip at the specified position
+ * @param {number} x - The x coordinate for the tooltip
+ * @param {number} y - The y coordinate for the tooltip
+ * @param {string} text - The text to show in the tooltip
+ * @param {number} duration - Duration in milliseconds to show the tooltip (default: 1000)
+ */
+export const showTooltip = (x, y, text, duration = 1000) => {
+  const tooltip = document.createElement('div');
+  tooltip.className = 'fixed bg-black text-white px-2 py-1 rounded text-xs z-50';
+  tooltip.textContent = text;
+  tooltip.style.left = `${x}px`;
+  tooltip.style.top = `${y - 30}px`;
+  document.body.appendChild(tooltip);
+  setTimeout(() => tooltip.remove(), duration);
+};

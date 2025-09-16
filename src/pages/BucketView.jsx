@@ -4,7 +4,12 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
 import { fileService } from '../services/file.service'
-import { getDaysUntilExpiration, getExpirationStatus, formatDate } from '../utils/helpers'
+import { 
+  getDaysUntilExpiration, 
+  getExpirationStatus, 
+  formatDate, 
+  showTooltip 
+} from '../utils/helpers'
 import potIcon from '../assets/potIcon.png'
 import Logger from '../utils/logger.js'
 
@@ -324,15 +329,7 @@ function BucketView() {
     try {
       setCopyingPin(true)
       await navigator.clipboard.writeText(bucketPin)
-      
-      // Show temporary tooltip
-      const tooltip = document.createElement('div')
-      tooltip.className = 'fixed bg-black text-white px-2 py-1 rounded text-xs z-50'
-      tooltip.textContent = 'PIN copied!'
-      tooltip.style.left = `${e.pageX}px`
-      tooltip.style.top = `${e.pageY - 30}px`
-      document.body.appendChild(tooltip)
-      setTimeout(() => tooltip.remove(), 1000)
+      showTooltip(e.pageX, e.pageY, 'PIN copied!')
     } catch (err) {
       Logger.error('Failed to copy PIN:', err)
     } finally {

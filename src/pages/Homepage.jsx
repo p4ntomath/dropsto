@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useBuckets } from '../hooks/useBuckets'
 import { bucketService } from '../services/bucket.service'  // Add this line
 import { BUCKET_COLORS, BUCKET_ICONS } from '../utils/constants'
-import { getDaysUntilExpiration, getExpirationStatus } from '../utils/helpers'
+import { getDaysUntilExpiration, getExpirationStatus, showTooltip } from '../utils/helpers'
 import potIcon from '../assets/potIcon.png'
 import copyIcon from '../assets/copy.svg'
 import Logger from '../utils/logger.js'
@@ -714,14 +714,7 @@ function Homepage() {
                           onClick={(e) => {
                             e.stopPropagation();
                             navigator.clipboard.writeText(bucketPins[bucket.id]);
-                            // Show a tooltip or notification that PIN was copied
-                            const tooltip = document.createElement('div');
-                            tooltip.className = 'fixed bg-black text-white px-2 py-1 rounded text-xs';
-                            tooltip.textContent = 'PIN copied!';
-                            tooltip.style.left = `${e.pageX}px`;
-                            tooltip.style.top = `${e.pageY - 30}px`;
-                            document.body.appendChild(tooltip);
-                            setTimeout(() => tooltip.remove(), 1000);
+                            showTooltip(e.pageX, e.pageY, 'PIN copied!');
                           }}
                           className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded font-mono text-gray-600 transition-colors flex items-center space-x-1"
                           title="Click to copy PIN"
@@ -880,14 +873,7 @@ function Homepage() {
                   <button
                     onClick={(e) => {
                       navigator.clipboard.writeText(createdBucketPin);
-                      // Show a tooltip or notification that PIN was copied
-                      const tooltip = document.createElement('div');
-                      tooltip.className = 'fixed bg-black text-white px-2 py-1 rounded text-xs z-50';
-                      tooltip.textContent = 'PIN copied!';
-                      tooltip.style.left = `${e.pageX}px`;
-                      tooltip.style.top = `${e.pageY - 30}px`;
-                      document.body.appendChild(tooltip);
-                      setTimeout(() => tooltip.remove(), 1000);
+                      showTooltip(e.pageX, e.pageY, 'PIN copied!');
                     }}
                     className="ml-3 p-2 text-gray-400 hover:text-gray-600 rounded group"
                     title="Copy PIN"
