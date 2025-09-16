@@ -18,7 +18,7 @@ function FeaturesSection() {
         </svg>
       ),
       title: "Upload Your Files",
-      description: "Drop files directly into your bucket anytime — no login needed."
+      description: "Drop files directly into your bucket anytime and no login needed."
     },
     {
       icon: (
