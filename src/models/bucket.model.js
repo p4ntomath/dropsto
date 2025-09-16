@@ -1,4 +1,4 @@
-import { encryptPIN, decryptPIN } from '../utils/encryption';
+import { encryptPIN, decryptPIN, hashPIN } from '../utils/encryption';
 import { formatFileSize } from '../utils/helpers';
 import { getAuth } from 'firebase/auth';
 
@@ -22,11 +22,12 @@ export class Bucket {
     this.preview = data.preview || 'folder';
     this.color = data.color || 'from-blue-500 to-cyan-500';
     
-    // Legacy PIN handling - if pinCode exists, it's a legacy bucket
+    // Handle PIN data
     if (data.pinCode) {
-      this._pinCode = data.pinCode;
+      this._pinCode = data.pinCode; // Legacy PIN
     } else if (data.encryptedPin) {
       this.encryptedPin = data.encryptedPin;
+      this.hashedPin = data.hashedPin;
     }
     
     if (data.isOwned !== undefined) this.isOwned = data.isOwned;
@@ -47,13 +48,16 @@ export class Bucket {
     return null;
   }
 
-  // Set PIN - for new buckets only
+  /**
+   * Set PIN - for new buckets only
+   */
   async setPinCode(value) {
     if (!this.encryptedPin && !this._pinCode && value) {
+      // For new buckets, store both encrypted and hashed PINs
+      this.encryptedPin = await encryptPIN(value);
+      this.hashedPin = await hashPIN(value);
       // Store PIN temporarily for owner
       this._pinCode = value;
-      // Encrypt for storage
-      this.encryptedPin = await encryptPIN(value);
     }
   }
 
@@ -124,13 +128,10 @@ export class Bucket {
       color: this.color
     };
 
-    // Handle PIN storage
-    if (this._pinCode && !this.encryptedPin) {
-      // Legacy bucket - store raw PIN
-      data.pinCode = this._pinCode;
-    } else if (this.encryptedPin) {
-      // New bucket - store encrypted PIN
+    // Always include encrypted and hashed PIN data for new buckets
+    if (this.encryptedPin && this.hashedPin) {
       data.encryptedPin = this.encryptedPin;
+      data.hashedPin = this.hashedPin;
     }
 
     return data;

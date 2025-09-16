@@ -15,7 +15,7 @@ import { db } from '../firebase/config.js'
 import { Bucket } from '../models/bucket.model.js'
 import { COLLECTIONS, STORAGE_KEYS, SECURITY } from '../utils/constants.js'
 import { generatePinCode, shouldAutoDeleteBucket } from '../utils/helpers.js'
-import { encryptPIN } from '../utils/encryption.js'
+import { encryptPIN, hashPIN } from '../utils/encryption.js'
 
 /**
  * Bucket Service - Handles all bucket-related operations
@@ -87,17 +87,12 @@ export class BucketService {
           owner: bucketData.owner
         });
 
-        // Set and encrypt the PIN code
+        // Set and encrypt the PIN code - this will also generate the hash
         await bucket.setPinCode(pinCode);
 
-        // Try to add to Firestore - store only the encrypted PIN
-        const bucketData = {
-          ...bucket.toFirestore(),
-          encryptedPin: bucket.encryptedPin // Store encrypted PIN
-        };
-        delete bucketData.pinCode; // Remove raw PIN if it exists
-        
-        const docRef = await addDoc(collection(db, COLLECTIONS.BUCKETS), bucketData);
+        // Try to add to Firestore - ensure we're using toFirestore() to include encrypted data
+        const firestoreData = bucket.toFirestore();
+        const docRef = await addDoc(collection(db, COLLECTIONS.BUCKETS), firestoreData);
         bucket.id = docRef.id;
 
         // Cache the bucket
@@ -221,28 +216,32 @@ export class BucketService {
         return bucket;
       }
 
-      // If no legacy bucket found, check all active buckets with encrypted PINs
-      const encryptedPinQuery = query(
+      // Generate hash of provided PIN for lookup
+      const hashedPin = await hashPIN(pinCode);
+      if (!hashedPin) {
+        throw new Error('Failed to process PIN. Please try again.');
+      }
+
+      // Query buckets by hashed PIN (fast lookup)
+      const hashedPinQuery = query(
         collection(db, COLLECTIONS.BUCKETS),
-        where('isActive', '==', true),
-        where('encryptedPin', '!=', null)
+        where('hashedPin', '==', hashedPin),
+        where('isActive', '==', true)
       );
       
-      const bucketSnapshot = await getDocs(encryptedPinQuery);
+      const hashedPinSnapshot = await getDocs(hashedPinQuery);
       
-      // Check each bucket by decrypting its PIN
-      for (const doc of bucketSnapshot.docs) {
+      if (!hashedPinSnapshot.empty) {
+        const doc = hashedPinSnapshot.docs[0];
         const bucket = Bucket.fromFirestore(doc.id, doc.data());
-        const decryptedPin = await decryptPIN(bucket.encryptedPin);
         
-        if (decryptedPin === pinCode) {
-          // For non-owners, store the raw PIN temporarily for this session
-          if (!bucket.isOwned) {
-            bucket._pinCode = pinCode;
-          }
-          this.buckets.set(bucket.id, bucket);
-          return bucket;
+        // For non-owners, store the raw PIN temporarily for this session
+        if (!bucket.isOwned) {
+          bucket._pinCode = pinCode;
         }
+        
+        this.buckets.set(bucket.id, bucket);
+        return bucket;
       }
 
       // Record wrong attempt if no bucket found
@@ -329,8 +328,8 @@ export class BucketService {
         collection(db, COLLECTIONS.BUCKETS),
         where('collaborators', 'array-contains', userEmail),
         where('isActive', '==', true)
-      )
-
+      );
+      
       const querySnapshot = await getDocs(q)
       const buckets = []
 

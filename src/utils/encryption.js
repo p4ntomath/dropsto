@@ -3,6 +3,7 @@
 // ----------------------
 const IV_LENGTH = 12;        // 12 bytes for AES-GCM
 const ENCRYPTION_SECRET = import.meta.env.VITE_ENCRYPTION_SECRET || 'default-secret';
+const HMAC_SECRET = import.meta.env.VITE_HMAC_SECRET || 'hmac-default-secret';
 
 // Convert string to ArrayBuffer
 function str2ab(str) {
@@ -26,7 +27,7 @@ function base642ab(base64) {
 }
 
 // Generate encryption key from secret
-async function getKey(secret) {
+async function getKey(secret, usage = ['encrypt', 'decrypt']) {
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
     str2ab(secret),
@@ -45,7 +46,18 @@ async function getKey(secret) {
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
     true,
-    ['encrypt', 'decrypt']
+    usage
+  );
+}
+
+// Generate HMAC key from secret
+async function getHmacKey(secret) {
+  return await crypto.subtle.importKey(
+    'raw',
+    str2ab(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
   );
 }
 
@@ -100,4 +112,19 @@ async function decryptPIN(encryptedData) {
   }
 }
 
-export { encryptPIN, decryptPIN };
+async function hashPIN(pin) {
+  try {
+    const key = await getHmacKey(HMAC_SECRET);
+    const signature = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      str2ab(pin)
+    );
+    return ab2base64(signature);
+  } catch (err) {
+    console.error('Hashing error:', err);
+    return null;
+  }
+}
+
+export { encryptPIN, decryptPIN, hashPIN };

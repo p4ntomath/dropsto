@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useBuckets } from '../hooks/useBuckets'
+import { bucketService } from '../services/bucket.service'  // Add this line
 import { BUCKET_COLORS, BUCKET_ICONS } from '../utils/constants'
 import { getDaysUntilExpiration, getExpirationStatus } from '../utils/helpers'
 import potIcon from '../assets/potIcon.png'
