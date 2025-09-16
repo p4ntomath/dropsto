@@ -4,9 +4,6 @@ import {
   signOut as firebaseSignOut,
   setPersistence,
   browserLocalPersistence,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
   GoogleAuthProvider
 } from 'firebase/auth'
 import { auth, googleProvider } from '../firebase/config.js'
@@ -111,15 +108,9 @@ export class AuthService {
   handleAuthError(error) {
     const errorMessages = {
       'auth/user-disabled': 'Your account has been disabled. Please contact support.',
-      'auth/user-not-found': 'No account found with this email address.',
-      'auth/wrong-password': 'Incorrect password. Please try again.',
-      'auth/email-already-in-use': 'An account with this email already exists.',
-      'auth/weak-password': 'Password is too weak. Please choose a stronger password.',
-      'auth/invalid-email': 'Please enter a valid email address.',
-      'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
-      'auth/network-request-failed': 'Network error. Please check your connection.',
       'auth/popup-closed-by-user': 'Sign-in was cancelled.',
       'auth/popup-blocked': 'Sign-in popup was blocked. Please allow popups and try again.',
+      'auth/network-request-failed': 'Network error. Please check your connection.',
       'auth/api-key-not-valid': 'Firebase configuration error. Please check your API key.'
     }
 
@@ -133,52 +124,6 @@ export class AuthService {
   destroy() {
     this.authListeners.forEach(unsubscribe => unsubscribe())
     this.authListeners = []
-  }
-
-  /**
-   * Login with email and password
-   * @param {string} email - User email
-   * @param {string} password - User password
-   * @returns {Promise<User>} Authenticated user
-   */
-  async login(email, password) {
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      return userCredential.user
-    } catch (error) {
-      Logger.error('Login error:', error)
-      throw new Error('Failed to login')
-    }
-  }
-
-  /**
-   * Register with email and password
-   * @param {string} email - User email
-   * @param {string} password - User password
-   * @returns {Promise<User>} Registered user
-   */
-  async register(email, password) {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      return userCredential.user
-    } catch (error) {
-      Logger.error('Registration error:', error)
-      throw new Error('Failed to register')
-    }
-  }
-
-  /**
-   * Reset password
-   * @param {string} email - User email
-   * @returns {Promise<void>}
-   */
-  async resetPassword(email) {
-    try {
-      await sendPasswordResetEmail(auth, email)
-    } catch (error) {
-      Logger.error('Password reset error:', error)
-      throw new Error('Failed to send password reset email')
-    }
   }
 }
 
