@@ -278,14 +278,30 @@ export class BucketService {
    * Get client IP address
    * @returns {Promise<string>} Client IP address
    */
-  async getClientIP() {
-    try {
-      const response = await fetch('https://api.ipify.org?format=json')
-      const data = await response.json()
-      return data.ip
-    } catch (error) {
-      return 'unknown'
+  /**
+   * Get client IP address from request headers or context
+   * @param {object} req - Express request object or Firebase Functions context
+   * @returns {string} Client IP address
+   */
+  getClientIP(req) {
+    if (!req) return 'unknown';
+    // For Express.js or similar frameworks
+    const xForwardedFor = req.headers && req.headers['x-forwarded-for'];
+    if (xForwardedFor) {
+      // x-forwarded-for may contain a list of IPs, take the first one
+      return xForwardedFor.split(',')[0].trim();
     }
+    if (req.headers && req.headers['x-real-ip']) {
+      return req.headers['x-real-ip'];
+    }
+    if (req.ip) {
+      return req.ip;
+    }
+    // For Firebase Functions context (if available)
+    if (req.rawRequest && req.rawRequest.headers && req.rawRequest.headers['x-forwarded-for']) {
+      return req.rawRequest.headers['x-forwarded-for'].split(',')[0].trim();
+    }
+    return 'unknown';
   }
 
   /**
