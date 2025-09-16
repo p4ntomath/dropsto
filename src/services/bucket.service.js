@@ -95,9 +95,6 @@ export class BucketService {
         const docRef = await addDoc(collection(db, COLLECTIONS.BUCKETS), bucket.toFirestore());
         bucket.id = docRef.id;
 
-        // Store PIN mapping locally for quick access
-        this.storePinMapping(pinCode, bucket.id);
-
         // Cache the bucket
         this.buckets.set(bucket.id, bucket);
 
@@ -202,17 +199,6 @@ export class BucketService {
       recentAttempts.push(now);
       this.pinAttempts.set(clientIP, recentAttempts);
 
-      // Check local storage first for quick access
-      const pinMappings = this.getPinMappings();
-      const bucketId = pinMappings[pinCode];
-
-      if (bucketId) {
-        const bucket = await this.getBucketById(bucketId);
-        if (bucket) {
-          return bucket;
-        }
-      }
-
       // First try finding a bucket with raw PIN (legacy format)
       const rawPinQuery = query(
         collection(db, COLLECTIONS.BUCKETS), 
@@ -229,8 +215,7 @@ export class BucketService {
         // For legacy buckets, set the PIN directly without encryption
         bucket._pinCode = pinCode;
         
-        // Update local PIN mapping
-        this.storePinMapping(pinCode, bucket.id);
+        // Cache the bucket
         this.buckets.set(bucket.id, bucket);
         
         return bucket;
@@ -249,10 +234,8 @@ export class BucketService {
         const decryptedPin = await bucket.getPinCode();
         
         if (decryptedPin === pinCode) {
-          // Update local PIN mapping
-          this.storePinMapping(pinCode, bucket.id);
+          // Cache the bucket
           this.buckets.set(bucket.id, bucket);
-          
           return bucket;
         }
       }
@@ -433,34 +416,6 @@ export class BucketService {
 
     this.listeners.push(unsubscribe)
     return unsubscribe
-  }
-
-  /**
-   * Store PIN mapping in localStorage
-   * @param {string} pinCode - PIN code
-   * @param {string} bucketId - Bucket ID
-   */
-  storePinMapping(pinCode, bucketId) {
-    try {
-      const pinMappings = this.getPinMappings()
-      pinMappings[pinCode] = bucketId
-      localStorage.setItem(STORAGE_KEYS.PIN_MAPPINGS, JSON.stringify(pinMappings))
-    } catch (error) {
-      console.error('Error storing PIN mapping:', error)
-    }
-  }
-
-  /**
-   * Get PIN mappings from localStorage
-   * @returns {object} PIN mappings
-   */
-  getPinMappings() {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEYS.PIN_MAPPINGS) || '{}')
-    } catch (error) {
-      console.error('Error reading PIN mappings:', error)
-      return {}
-    }
   }
 
   /**

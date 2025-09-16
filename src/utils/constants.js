@@ -41,11 +41,9 @@ export const BUCKET_ICONS = [
 // Firestore collection names
 export const COLLECTIONS = {
   BUCKETS: 'buckets',
-  FILES: 'files',
-  PIN_MAPPINGS: 'pinMappings'
+  FILES: 'files'
 }
 
 // Local storage keys
 export const STORAGE_KEYS = {
-  PIN_MAPPINGS: 'dropsto-pin-mappings'
 }
