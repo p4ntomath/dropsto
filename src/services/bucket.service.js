@@ -84,15 +84,20 @@ export class BucketService {
           ...bucketData,
           ownerId: userId,
           ownerEmail: bucketData.ownerEmail,
-          owner: bucketData.owner,
-          pinCode: pinCode, // Store temporarily for owner
+          owner: bucketData.owner
         });
 
-        // Set the PIN code which will encrypt it
+        // Set and encrypt the PIN code
         await bucket.setPinCode(pinCode);
 
-        // Try to add to Firestore
-        const docRef = await addDoc(collection(db, COLLECTIONS.BUCKETS), bucket.toFirestore());
+        // Try to add to Firestore - store only the encrypted PIN
+        const bucketData = {
+          ...bucket.toFirestore(),
+          encryptedPin: bucket.encryptedPin // Store encrypted PIN
+        };
+        delete bucketData.pinCode; // Remove raw PIN if it exists
+        
+        const docRef = await addDoc(collection(db, COLLECTIONS.BUCKETS), bucketData);
         bucket.id = docRef.id;
 
         // Cache the bucket
@@ -100,7 +105,7 @@ export class BucketService {
 
         return bucket;
       } catch (error) {
-        // If it's a PIN conflict error or any other creation error, retry with a new PIN
+        // If it's the last attempt, throw the error
         if (attempt === maxRetries - 1) {
           console.error('Error creating bucket after max retries:', error);
           throw new Error('Failed to create bucket. Please try again.');
@@ -199,7 +204,7 @@ export class BucketService {
       recentAttempts.push(now);
       this.pinAttempts.set(clientIP, recentAttempts);
 
-      // First try finding a bucket with raw PIN (legacy format)
+      // First try finding a legacy bucket with raw PIN
       const rawPinQuery = query(
         collection(db, COLLECTIONS.BUCKETS), 
         where('pinCode', '==', pinCode),
@@ -211,30 +216,30 @@ export class BucketService {
       if (!rawPinSnapshot.empty) {
         const doc = rawPinSnapshot.docs[0];
         const bucket = Bucket.fromFirestore(doc.id, doc.data());
-        
-        // For legacy buckets, set the PIN directly without encryption
-        bucket._pinCode = pinCode;
-        
-        // Cache the bucket
+        bucket._pinCode = pinCode; // Set legacy PIN
         this.buckets.set(bucket.id, bucket);
-        
         return bucket;
       }
 
-      // Then check buckets with encrypted PINs
-      const encryptedPinBuckets = query(
+      // If no legacy bucket found, check all active buckets with encrypted PINs
+      const encryptedPinQuery = query(
         collection(db, COLLECTIONS.BUCKETS),
-        where('isActive', '==', true)
+        where('isActive', '==', true),
+        where('encryptedPin', '!=', null)
       );
       
-      const bucketSnapshot = await getDocs(encryptedPinBuckets);
+      const bucketSnapshot = await getDocs(encryptedPinQuery);
       
+      // Check each bucket by decrypting its PIN
       for (const doc of bucketSnapshot.docs) {
         const bucket = Bucket.fromFirestore(doc.id, doc.data());
-        const decryptedPin = await bucket.getPinCode();
+        const decryptedPin = await decryptPIN(bucket.encryptedPin);
         
         if (decryptedPin === pinCode) {
-          // Cache the bucket
+          // For non-owners, store the raw PIN temporarily for this session
+          if (!bucket.isOwned) {
+            bucket._pinCode = pinCode;
+          }
           this.buckets.set(bucket.id, bucket);
           return bucket;
         }
@@ -243,6 +248,7 @@ export class BucketService {
       // Record wrong attempt if no bucket found
       this.recordWrongAttempt(clientIP);
       return null;
+
     } catch (error) {
       if (error.message !== 'RECAPTCHA_REQUIRED') {
         console.error('Error getting bucket by PIN:', error);
