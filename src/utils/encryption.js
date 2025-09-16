@@ -4,8 +4,14 @@ import Logger from './logger.js';
 // CONFIG
 // ----------------------
 const IV_LENGTH = 12;        // 12 bytes for AES-GCM
-const ENCRYPTION_SECRET = import.meta.env.VITE_ENCRYPTION_SECRET || 'default-secret';
-const HMAC_SECRET = import.meta.env.VITE_HMAC_SECRET || 'hmac-default-secret';
+if (!import.meta.env.VITE_ENCRYPTION_SECRET) {
+  throw new Error('VITE_ENCRYPTION_SECRET environment variable is not set. Refusing to use weak default secret.');
+}
+if (!import.meta.env.VITE_HMAC_SECRET) {
+  throw new Error('VITE_HMAC_SECRET environment variable is not set. Refusing to use weak default secret.');
+}
+const ENCRYPTION_SECRET = import.meta.env.VITE_ENCRYPTION_SECRET;
+const HMAC_SECRET = import.meta.env.VITE_HMAC_SECRET;
 
 // Convert string to ArrayBuffer
 function str2ab(str) {
