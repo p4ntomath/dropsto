@@ -5,7 +5,7 @@
       "http://127.0.0.1:5173",
       "https://dropsto-123.web.app",
       "https://dropsto-123.firebaseapp.com",
-      "https://dropsto-123--pr8-dropsto-v3-8hehh23o.web.app"
+      "https://dropsto.app"
     ],
     "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "maxAgeSeconds": 3600,
