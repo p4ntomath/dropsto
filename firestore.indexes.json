@@ -1,24 +1,6 @@
 ﻿{
   "indexes": [
     {
-      "collectionGroup": "files",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "bucketId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "isActive",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "uploadedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "buckets",
       "queryScope": "COLLECTION",
       "fields": [
@@ -34,21 +16,38 @@
           "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
-      ]
+      ],
+      "density": "SPARSE_ALL"
     },
     {
       "collectionGroup": "buckets",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "pinCode",
+          "fieldPath": "isActive",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "isActive",
+          "fieldPath": "createdAt",
           "order": "ASCENDING"
         }
-      ]
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "buckets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
     },
     {
       "collectionGroup": "buckets",
@@ -66,25 +65,42 @@
           "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
-      ]
+      ],
+      "density": "SPARSE_ALL"
     },
     {
       "collectionGroup": "buckets",
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "pinCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "files",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "bucketId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "isActive",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "hashedPin",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "__name__",
-          "order": "ASCENDING"
+          "fieldPath": "uploadedAt",
+          "order": "DESCENDING"
         }
-      ]
+      ],
+      "density": "SPARSE_ALL"
     }
   ],
   "fieldOverrides": []
