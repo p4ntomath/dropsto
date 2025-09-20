@@ -4,4 +4,4 @@ Allow: /
 Disallow: /home
 Disallow: /bucket/
 
-Sitemap: https://dropsto-123.web.app/sitemap.xml
+Sitemap: https://dropsto/sitemap.xml
