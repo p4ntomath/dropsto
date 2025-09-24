@@ -166,7 +166,7 @@ function Homepage() {
   // Calculate total storage used
   const totalStorageUsed = buckets.reduce((total, bucket) => total + (bucket.storageUsed || 0), 0)
   const totalStorageUsedMB = totalStorageUsed / (1024 * 1024)
-  const totalStorageAvailableMB = 30 // Total storage limit
+  const totalStorageAvailableMB = 50 // Total storage limit
   const totalStorageRemainingMB = totalStorageAvailableMB - totalStorageUsedMB
   const storagePercentage = Math.round((totalStorageUsedMB / totalStorageAvailableMB) * 100)
 
@@ -610,7 +610,7 @@ function Homepage() {
               <div>
                 <h3 className="text-base lg:text-lg font-semibold text-gray-900">Storage Usage</h3>
                 <p className="text-sm text-gray-600">
-                  {totalStorageUsedMB.toFixed(1)} MB used of 30 MB available
+                  {totalStorageUsedMB.toFixed(1)} MB used of 50 MB available
                 </p>
                 <p className="text-sm text-gray-600">
                   {totalStorageRemainingMB.toFixed(1)} MB remaining

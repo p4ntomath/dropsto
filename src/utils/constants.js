@@ -1,6 +1,6 @@
 // Storage and file constraints
 export const STORAGE_LIMITS = {
-  MAX_TOTAL_STORAGE_MB: 30,
+  MAX_TOTAL_STORAGE_MB: 50,
   BUCKET_EXPIRY_DAYS: 7
 }
 
