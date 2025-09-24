@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { fileService } from '../services/file.service'
 import { formatFileSize, formatDate } from '../utils/helpers'
 import Logger from '../utils/logger.js'
+import FilePreviewModal from './FilePreviewModal'
 
 export default function BucketFilesModal({ bucket, isOpen, onClose }) {
   const [files, setFiles] = useState([])
@@ -11,6 +12,8 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
   const [error, setError] = useState('')
   const [dragActive, setDragActive] = useState(false)
   const [downloadingFiles, setDownloadingFiles] = useState(new Set())
+  const [previewFile, setPreviewFile] = useState(null)
+  const [viewMode, setViewMode] = useState('grid')
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -121,6 +124,12 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
     }
   }
 
+  const handlePreview = (file) => {
+    if (file.isPreviewable()) {
+      setPreviewFile(file)
+    }
+  }
+
   if (!bucket) return null
 
   return (
@@ -136,25 +145,52 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+          className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-6">
+          <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">{bucket?.name || 'Bucket'}</h2>
-              <button
-                onClick={onClose}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">{bucket?.name || 'Bucket'}</h2>
+                <p className="text-sm text-gray-500 mt-1">Upload and manage your files</p>
+              </div>
+              <div className="flex items-center space-x-4">
+                {/* View Toggle */}
+                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-2 rounded transition-colors ${
+                      viewMode === 'grid' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M3,11H11V3H3M3,21H11V13H3M13,21H21V13H13M13,3V11H21V3" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-2 rounded transition-colors ${
+                      viewMode === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M9,5V9H21V5M9,19H21V15H9M9,14H21V10H9M4,9H8V5H4M4,19H8V15H4M4,14H8V10H4V14Z" />
+                    </svg>
+                  </button>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="p-6">
-            <div className="mb-6">
+            {/* Upload Area */}
+            <div className="mt-6">
               <div 
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                   dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
@@ -190,50 +226,145 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
             </div>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                 {error}
               </div>
             )}
+          </div>
 
+          <div className="p-6 overflow-y-auto max-h-[60vh]">
             {isLoading ? (
               <div className="text-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
               </div>
             ) : files.length > 0 ? (
-              <div className="space-y-2">
-                {files.map((file) => (
-                  <div
-                    key={file.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {formatFileSize(file.size)} • {formatDate(file.uploadedAt)}
-                        </p>
+              viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {files.map((file) => (
+                    <motion.div
+                      key={file.id}
+                      className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer"
+                      onClick={() => file.isPreviewable() && handlePreview(file)}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      {/* Preview Area */}
+                      <div className="aspect-video relative bg-gray-100 flex items-center justify-center">
+                        {file.isImage() ? (
+                          <img
+                            src={file.downloadURL}
+                            alt={file.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : file.isVideo() ? (
+                          <div className="w-full h-full relative">
+                            <video
+                              src={file.downloadURL}
+                              className="w-full h-full object-cover"
+                              muted
+                              preload="metadata"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                              <svg className="w-12 h-12 text-white/90" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8,5.14V19.14L19,12.14L8,5.14Z" />
+                              </svg>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            <div className="text-center p-4">
+                              <svg className="w-12 h-12 mx-auto mb-2" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z" />
+                              </svg>
+                              <p className="text-sm truncate max-w-[150px]">{file.type.toUpperCase()}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* File Info */}
+                      <div className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-medium text-gray-900 truncate text-sm" title={file.name}>
+                            {file.name}
+                          </h3>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-500">{file.getFormattedSize()}</p>
+                            <p className="text-xs text-gray-400">{formatDate(file.uploadedAt)}</p>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(file);
+                            }}
+                            disabled={downloadingFiles.has(file.id)}
+                            className="p-2 text-gray-400 hover:text-green-600 rounded transition-colors"
+                            title="Download"
+                          >
+                            {downloadingFiles.has(file.id) ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {files.map((file) => (
+                    <div
+                      key={file.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center space-x-3 min-w-0">
+                        <div className="text-gray-400">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(file.size)} • {formatDate(file.uploadedAt)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {file.isPreviewable() && (
+                          <button
+                            onClick={() => handlePreview(file)}
+                            className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                          >
+                            Preview
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDownload(file)}
+                          disabled={downloadingFiles.has(file.id)}
+                          className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md text-blue-600 hover:bg-blue-50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {downloadingFiles.has(file.id) ? (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-3 h-3 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
+                              <span>Downloading...</span>
+                            </div>
+                          ) : (
+                            'Download'
+                          )}
+                        </button>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDownload(file)}
-                      disabled={downloadingFiles.has(file.id)}
-                      className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {downloadingFiles.has(file.id) ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
-                          <span>Downloading...</span>
-                        </div>
-                      ) : (
-                        'Download'
-                      )}
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )
             ) : (
               <div className="text-center text-gray-500 py-4">
                 No files uploaded yet
@@ -242,6 +373,13 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Preview Modal */}
+      <FilePreviewModal
+        file={previewFile}
+        isOpen={previewFile !== null}
+        onClose={() => setPreviewFile(null)}
+      />
     </AnimatePresence>
   )
 }
