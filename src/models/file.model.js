@@ -56,12 +56,21 @@ export class FileModel {
    * @returns {string}
    */
   getFileCategory() {
-    const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']
-    const documentTypes = ['pdf', 'doc', 'docx', 'txt', 'rtf']
-    const videoTypes = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm']
-    const audioTypes = ['mp3', 'wav', 'flac', 'aac', 'ogg']
-    const archiveTypes = ['zip', 'rar', '7z', 'tar', 'gz']
+    const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico']
+    const documentTypes = ['pdf', 'doc', 'docx', 'txt', 'rtf', 'md', 'csv', 'xls', 'xlsx']
+    const videoTypes = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv', 'm4v']
+    const audioTypes = ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a']
+    const archiveTypes = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2']
 
+    // Check MIME type first
+    if (this.mimeType) {
+      const [category] = this.mimeType.split('/')
+      if (['image', 'video', 'audio'].includes(category)) {
+        return category
+      }
+    }
+
+    // Fallback to extension check
     if (imageTypes.includes(this.type)) return 'image'
     if (documentTypes.includes(this.type)) return 'document'
     if (videoTypes.includes(this.type)) return 'video'
@@ -71,11 +80,28 @@ export class FileModel {
   }
 
   /**
+   * Check if file is previewable
+   * @returns {boolean}
+   */
+  isPreviewable() {
+    const category = this.getFileCategory()
+    return category === 'image' || category === 'video'
+  }
+
+  /**
    * Check if file is an image
    * @returns {boolean}
    */
   isImage() {
     return this.getFileCategory() === 'image'
+  }
+
+  /**
+   * Check if file is a video
+   * @returns {boolean}
+   */
+  isVideo() {
+    return this.getFileCategory() === 'video'
   }
 
   /**
