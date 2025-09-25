@@ -138,42 +138,42 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4"
         onClick={onClose}
       >
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+          className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-6 border-b border-gray-200">
+          <div className="p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">{bucket?.name || 'Bucket'}</h2>
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{bucket?.name || 'Bucket'}</h2>
                 <p className="text-sm text-gray-500 mt-1">Upload and manage your files</p>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3 sm:space-x-4">
                 {/* View Toggle */}
                 <div className="flex items-center bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setViewMode('grid')}
-                    className={`p-2 rounded transition-colors ${
+                    className={`p-1.5 sm:p-2 rounded transition-colors ${
                       viewMode === 'grid' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
                     }`}
                   >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M3,11H11V3H3M3,21H11V13H3M13,21H21V13H13M13,3V11H21V3" />
                     </svg>
                   </button>
                   <button
                     onClick={() => setViewMode('list')}
-                    className={`p-2 rounded transition-colors ${
+                    className={`p-1.5 sm:p-2 rounded transition-colors ${
                       viewMode === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
                     }`}
                   >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M9,5V9H21V5M9,19H21V15H9M9,14H21V10H9M4,9H8V5H4M4,19H8V15H4M4,14H8V10H4V14Z" />
                     </svg>
                   </button>
@@ -190,9 +190,9 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
             </div>
 
             {/* Upload Area */}
-            <div className="mt-6">
+            <div className="mt-4 sm:mt-6">
               <div 
-                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center transition-colors ${
                   dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
                 }`}
                 onDragEnter={handleDrag}
@@ -210,18 +210,18 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUploading ? (
                     <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                       <span>Uploading...</span>
                     </div>
                   ) : (
                     'Upload Files'
                   )}
                 </button>
-                <p className="text-sm text-gray-500 mt-2">or drag and drop files here</p>
+                <p className="text-xs sm:text-sm text-gray-500 mt-2">or drag and drop files here</p>
               </div>
             </div>
 
@@ -232,14 +232,14 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
             )}
           </div>
 
-          <div className="p-6 overflow-y-auto max-h-[60vh]">
+          <div className="flex-1 p-4 sm:p-6 overflow-y-auto min-h-0">
             {isLoading ? (
               <div className="text-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
               </div>
             ) : files.length > 0 ? (
               viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {files.map((file) => (
                     <motion.div
                       key={file.id}
