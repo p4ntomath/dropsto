@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
 import { fileService } from '../services/file.service'
+import FilePreviewModal from '../components/FilePreviewModal'
 import { 
   getDaysUntilExpiration, 
   getExpirationStatus, 
@@ -44,6 +45,7 @@ function BucketView() {
   const [viewMode, setViewMode] = useState('grid')
   const [showDeleteBucketModal, setShowDeleteBucketModal] = useState(false)
   const [deletingBucket, setDeletingBucket] = useState(false)
+  const [previewFile, setPreviewFile] = useState(null)
 
   // Load bucket and files on component mount
   useEffect(() => {
@@ -364,6 +366,20 @@ function BucketView() {
     return fileIcons[type] || fileIcons.default
   }
 
+  // Add this new function to handle preview
+  const handlePreview = (file) => {
+    if (file.isPreviewable()) {
+      setPreviewFile(file)
+    } else {
+      showNotification(
+        'error',
+        'Preview Not Available',
+        'This file type does not support preview.',
+        []
+      )
+    }
+  }
+
   // Loading state
   if (loading) {
     return (
@@ -596,64 +612,111 @@ function BucketView() {
           </div>
         ) : (
           <div>
-            {/* Files Grid/List */}
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
                 {files.map((file) => (
                   <motion.div
                     key={file.id}
-                    className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-lg transition-shadow group"
+                    className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer"
+                    onClick={() => file.isPreviewable() && handlePreview(file)}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => downloadFile(file)}
-                          className="p-1 text-gray-400 hover:text-green-600 rounded"
-                          title="Download"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => startRename(file)}
-                          className="p-1 text-gray-400 hover:text-blue-600 rounded"
-                          title="Rename"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => deleteFile(file.id)}
-                          disabled={deletingFileId === file.id}
-                          className="p-1 text-gray-400 hover:text-red-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Delete"
-                        >
-                          {deletingFileId === file.id ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
-                          ) : (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    {/* Preview Area */}
+                    <div className="aspect-video relative bg-gray-100 flex items-center justify-center">
+                      {file.isImage() ? (
+                        <img
+                          src={file.downloadURL}
+                          alt={file.name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : file.isVideo() ? (
+                        <div className="w-full h-full relative">
+                          <video
+                            src={file.downloadURL}
+                            className="w-full h-full object-cover"
+                            muted
+                            preload="metadata"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <svg className="w-12 h-12 text-white/90" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8,5.14V19.14L19,12.14L8,5.14Z" />
                             </svg>
-                          )}
-                        </button>
-                      </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <div className="text-center p-4">
+                            {getFileIcon(file.type, "w-12 h-12 mx-auto mb-2")}
+                            <p className="text-sm truncate max-w-[150px]">{file.type.toUpperCase()}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <h3 className="font-medium text-gray-900 truncate mb-1 text-sm sm:text-base" title={file.name}>
-                      {file.name}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-gray-500 mb-2">{file.getFormattedSize()}</p>
-                    <p className="text-xs text-gray-400">
-                      {formatDate(file.uploadedAt)}
-                    </p>
-                    {file.downloadCount > 0 && (
-                      <p className="text-xs text-blue-600 mt-1">
-                        Downloaded {file.downloadCount} time{file.downloadCount > 1 ? 's' : ''}
-                      </p>
-                    )}
+
+                    {/* File Info */}
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium text-gray-900 truncate text-sm sm:text-base" title={file.name}>
+                          {file.name}
+                        </h3>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-500">{file.getFormattedSize()}</p>
+                          <p className="text-xs text-gray-400">{formatDate(file.uploadedAt)}</p>
+                        </div>
+                        <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              downloadFile(file);
+                            }}
+                            className="p-1 text-gray-400 hover:text-green-600 rounded"
+                            title="Download"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startRename(file);
+                            }}
+                            className="p-1 text-gray-400 hover:text-blue-600 rounded"
+                            title="Rename"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteFile(file.id);
+                            }}
+                            disabled={deletingFileId === file.id}
+                            className="p-1 text-gray-400 hover:text-red-600 rounded disabled:opacity-50"
+                            title="Delete"
+                          >
+                            {deletingFileId === file.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      {file.downloadCount > 0 && (
+                        <p className="text-xs text-blue-600 mt-2">
+                          Downloaded {file.downloadCount} time{file.downloadCount > 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
                   </motion.div>
                 ))}
               </div>
@@ -690,6 +753,15 @@ function BucketView() {
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center justify-end space-x-1 lg:space-x-2">
+                              {(file.type === 'image' || file.type === 'video' || 
+                                file.mimeType?.startsWith('image/') || file.mimeType?.startsWith('video/')) && (
+                                <button
+                                  onClick={() => handlePreview(file)}
+                                  className="text-blue-600 hover:text-blue-700 px-2 py-1 text-xs lg:text-sm"
+                                >
+                                  Preview
+                                </button>
+                              )}
                               <button
                                 onClick={() => downloadFile(file)}
                                 className="text-green-600 hover:text-green-700 px-2 py-1 text-xs lg:text-sm"
@@ -775,7 +847,7 @@ function BucketView() {
                 onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               />
               <div className="mt-4 text-xs text-gray-500">
-                <p>Maximum total storage: 30MB per user</p>
+                <p>Maximum total storage: 50MB per user</p>
               </div>
             </div>
           </motion.div>
@@ -955,6 +1027,13 @@ function BucketView() {
           </motion.div>
         </div>
       )}
+
+      {/* Preview Modal */}
+      <FilePreviewModal
+        file={previewFile}
+        isOpen={previewFile !== null}
+        onClose={() => setPreviewFile(null)}
+      />
     </div>
   )
 }
