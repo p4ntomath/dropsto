@@ -33,7 +33,8 @@ function Homepage() {
     name: '',
     description: '',
     color: 'from-blue-500 to-cyan-500',
-    preview: 'folder'
+    preview: 'folder',
+    allowPinUploads: true
   })
   const [showPinModal, setShowPinModal] = useState(false)
   const [createdBucketPin, setCreatedBucketPin] = useState('')
@@ -56,7 +57,8 @@ function Homepage() {
         name: '',
         description: '',
         color: 'from-blue-500 to-cyan-500',
-        preview: 'folder'
+        preview: 'folder',
+        allowPinUploads: true
       })
       
       // Handle bucket creation
@@ -816,6 +818,24 @@ function Homepage() {
                       {getIcon(icon.value, "w-5 h-5")}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  PIN Access Settings
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="allowPinUploads"
+                    checked={newBucket.allowPinUploads !== false}
+                    onChange={(e) => setNewBucket(prev => ({ ...prev, allowPinUploads: e.target.checked }))}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="allowPinUploads" className="text-sm text-gray-600">
+                    Allow uploads from PIN users (can be changed later)
+                  </label>
                 </div>
               </div>
             </div>

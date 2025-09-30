@@ -394,7 +394,7 @@ export class FileService {
       let userType = 'authenticated user'
       
       if (userId === 'pin-user') {
-        // Get bucket to find the owner
+        // Get bucket to find the owner and check PIN upload permission
         const bucket = await bucketService.getBucketById(bucketId)
         if (!bucket) {
           return {
@@ -402,6 +402,15 @@ export class FileService {
             error: 'Bucket not found.'
           }
         }
+
+        // Check if PIN uploads are allowed
+        if (!bucket.allowPinUploads) {
+          return {
+            valid: false,
+            error: 'PIN uploads are not allowed for this bucket.'
+          }
+        }
+
         userToCheck = bucket.ownerId
         userType = 'bucket owner'
       }
