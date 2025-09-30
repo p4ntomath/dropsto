@@ -152,7 +152,9 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{bucket?.name || 'Bucket'}</h2>
-                <p className="text-sm text-gray-500 mt-1">Upload and manage your files</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {bucket?.allowPinUploads ? 'Upload and manage your files' : 'View files in this bucket'}
+                </p>
               </div>
               <div className="flex items-center space-x-3 sm:space-x-4">
                 {/* View Toggle */}
@@ -189,41 +191,51 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
               </div>
             </div>
 
-            {/* Upload Area */}
-            <div className="mt-4 sm:mt-6">
-              <div 
-                className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center transition-colors ${
-                  dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-                }`}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            {/* Upload Area - Only show if PIN uploads are allowed */}
+            {bucket?.allowPinUploads && (
+              <div className="mt-4 sm:mt-6">
+                <div 
+                  className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center transition-colors ${
+                    dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
                 >
-                  {isUploading ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      <span>Uploading...</span>
-                    </div>
-                  ) : (
-                    'Upload Files'
-                  )}
-                </button>
-                <p className="text-xs sm:text-sm text-gray-500 mt-2">or drag and drop files here</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isUploading ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Uploading...</span>
+                      </div>
+                    ) : (
+                      'Upload Files'
+                    )}
+                  </button>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-2">or drag and drop files here</p>
+                </div>
               </div>
-            </div>
+            )}
+
+            {!bucket?.allowPinUploads && (
+              <div className="mt-4 sm:mt-6">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-6">
+                  <p className="text-sm text-gray-600 text-center">PIN uploads are disabled for this bucket</p>
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">

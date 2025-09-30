@@ -1,49 +1,26 @@
-# DropSto v2 Release Notes
+# DropSto v4 Release Notes
 
 ## Major Changes
-- **Simplified PIN Format**: Introduced shorter 4-character PINs (format: `drop-XXXX`) for easier sharing and memorization
-- **Legacy PIN Support**: Maintained backward compatibility with existing 8-character PINs (format: `drop-XXXXXXXX`)
+- **PIN Upload Control**: Added ability for bucket owners to disable PIN uploads for individual buckets
+- **Enhanced Security**: Bucket owners can now better control access to their buckets by managing PIN upload permissions
+- **Increased Storage**: Expanded storage limit from 30MB to 50MB per user for greater flexibility
+- **Media Previews**: Added preview support for images and videos directly in the interface
 
 ## UI/UX Improvements
-- Updated PIN input validation to support both PIN formats
-- Enhanced PIN format help text to clearly indicate both new and legacy format support
-- Added visual feedback for valid PIN entries
-- Improved PIN format messaging across all relevant UI components
+- Updated bucket creation UI to include PIN upload settings
+- Added PIN upload toggle in bucket settings
+- Improved bucket icon in features section for better visual representation
+- Enhanced feedback when PIN uploads are disabled
+- Added inline preview functionality for images and video files
+- Improved file grid view with media thumbnails
 
 ## Technical Improvements
-- Updated PIN generation logic to create shorter, more user-friendly codes
-- Enhanced PIN validation system to handle both formats seamlessly
-- Maintained full compatibility with existing stored buckets
-
-## Documentation Updates
-- Updated feature descriptions to reflect the new PIN format
-- Added legacy format compatibility notes
-
-## Other Changes
-- Improved error handling for PIN validation
-- Updated help text and tooltips throughout the application
-
-## Notes
-- All existing buckets with 8-character PINs continue to work without any changes
-- New buckets will receive the shorter 4-character PIN format
-- Both PIN formats provide the same level of security and functionality
-
-## Migration Guide
-No migration is needed. The system will automatically:
-- Continue to support existing 8-character PINs
-- Generate 4-character PINs for new buckets
-- Handle both formats in all user interfaces
-
-## Technical Details
-### PIN Format Specifications
-- **New Format**: `drop-XXXX` where X can be A-Z or 0-9
-- **Legacy Format**: `drop-XXXXXXXX` where X can be A-Z or 0-9
-- Both formats are case-sensitive
-
-### Validation Rules
-- PINs must start with "drop-" (case-insensitive)
-- Characters after "drop-" must be uppercase alphanumeric
-- Total length must be either 9 characters (new format) or 13 characters (legacy format)
+- Added validation system to prevent PIN uploads when disabled
+- Implemented bucket-level PIN upload permission control
+- Updated bucket model to support PIN upload settings
+- Increased storage quota validation to 50MB
+- Implemented media preview system with lazy loading
+- Added support for common image and video format previews
 
 ## Release Date
-September 7, 2025
+September 30, 2025

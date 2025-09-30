@@ -21,6 +21,7 @@ export class Bucket {
     this.storageUsed = data.storageUsed || 0;
     this.preview = data.preview || 'folder';
     this.color = data.color || 'from-blue-500 to-cyan-500';
+    this.allowPinUploads = data.allowPinUploads !== false; // true by default
     
     // Handle PIN data
     if (data.pinCode) {
@@ -125,7 +126,8 @@ export class Bucket {
       fileCount: this.fileCount,
       storageUsed: this.storageUsed,
       preview: this.preview,
-      color: this.color
+      color: this.color,
+      allowPinUploads: this.allowPinUploads
     };
 
     // Always include encrypted and hashed PIN data for new buckets

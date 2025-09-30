@@ -29,6 +29,7 @@ function BucketView() {
   const [deletingFileId, setDeletingFileId] = useState(null) // Track which file is being deleted
   const [bucketPin, setBucketPin] = useState(null)
   const [copyingPin, setCopyingPin] = useState(false)
+  const [allowPinUploads, setAllowPinUploads] = useState(true)
   
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)
@@ -65,6 +66,7 @@ function BucketView() {
         return
       }
       setBucket(bucketData)
+      setAllowPinUploads(bucketData.allowPinUploads)
 
       // Load bucket PIN if owned
       if (bucketData.isOwned) {
@@ -80,6 +82,29 @@ function BucketView() {
       setError(err.message || 'Failed to load bucket data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Toggle PIN uploads
+  const togglePinUploads = async () => {
+    try {
+      const newValue = !allowPinUploads
+      await bucketService.updateBucket(bucketId, { allowPinUploads: newValue })
+      setAllowPinUploads(newValue)
+      showNotification(
+        'success',
+        'Settings Updated',
+        `PIN uploads are now ${newValue ? 'allowed' : 'disabled'} for this bucket.`,
+        []
+      )
+    } catch (error) {
+      Logger.error('Error updating PIN upload setting:', error)
+      showNotification(
+        'error',
+        'Update Failed',
+        error.message,
+        []
+      )
     }
   }
 
@@ -504,7 +529,27 @@ function BucketView() {
                   </svg>
                 </button>
               </div>
-              
+               {/* Add PIN Upload Toggle for bucket owners */}
+               {bucket && bucket.isOwned && (
+                <div className="flex items-center space-x-4 ml-auto">
+                  <div className="flex items-center space-x-2">
+                    <label className="text-sm text-gray-600">External Uploads</label>
+                    <button
+                      onClick={togglePinUploads}
+                      className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                        allowPinUploads ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span className="sr-only">Toggle PIN uploads</span>
+                      <span
+                        className={`inline-block w-4 h-4 transform transition-transform bg-white rounded-full ${
+                          allowPinUploads ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
               {/* Delete Bucket Button - Only show if user owns the bucket */}
               {bucket && bucket.isOwned && (
                 <button
@@ -518,6 +563,8 @@ function BucketView() {
                   <span className="hidden sm:inline">Delete</span>
                 </button>
               )}
+
+             
               
               <button
                 onClick={() => setShowUploadModal(true)}
@@ -667,7 +714,7 @@ function BucketView() {
                           <p className="text-xs text-gray-500">{file.getFormattedSize()}</p>
                           <p className="text-xs text-gray-400">{formatDate(file.uploadedAt)}</p>
                         </div>
-                        <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center space-x-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
