@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useBuckets } from '../hooks/useBuckets'
 import { bucketService } from '../services/bucket.service'  // Add this line
+import { analyticsService } from '../services/analytics.service'
 import { BUCKET_COLORS, BUCKET_ICONS } from '../utils/constants'
 import { getDaysUntilExpiration, getExpirationStatus, showTooltip } from '../utils/helpers'
 import potIcon from '../assets/potIcon.png'
@@ -60,6 +61,24 @@ function Homepage() {
         preview: 'folder',
         allowPinUploads: true
       })
+      
+      // Handle bucket creation
+      await handleBucketCreated(bucket)
+    } catch (error) {
+      Logger.error('Error creating bucket:', error)
+      // Error is handled by the hook
+    } finally {
+      setIsCreatingBucket(false)
+    }
+  }
+
+  const handleCreateBucket = async () => {
+    try {
+      setIsCreatingBucket(true)
+      const bucket = await createBucket(newBucket)
+      
+      // Track bucket creation in analytics
+      analyticsService.logBucketCreate(bucket.id)
       
       // Handle bucket creation
       await handleBucketCreated(bucket)

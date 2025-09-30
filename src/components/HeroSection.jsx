@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
+import { analyticsService } from '../services/analytics.service'
 import BucketFilesModal from './BucketFilesModal'
 import { PIN_LENGTH, SECURITY } from '../utils/constants'
 import Logger from '../utils/logger.js'
@@ -101,6 +102,8 @@ function HeroSection() {
     const isValidFormat = pin.length === PIN_LENGTH.NEW || pin.length === PIN_LENGTH.LEGACY
     if (!isValidFormat) {
       setPinError('Please enter a valid PIN code')
+      // Track invalid format attempt
+      analyticsService.logPinAttempt(pin, 'invalid_format')
       return
     }
     
@@ -115,6 +118,8 @@ function HeroSection() {
         if (!recaptchaToken) {
           setPinError('Please complete the reCAPTCHA verification')
           setIsLoading(false)
+          // Track missing reCAPTCHA
+          analyticsService.logPinAttempt(pin, 'missing_recaptcha')
           return
         }
       }
@@ -127,8 +132,12 @@ function HeroSection() {
         setIsModalOpen(true)
         setPin('') // Clear the PIN input
         setShowCaptcha(false) // Reset captcha state
+        // Track successful PIN access
+        analyticsService.logPinAccess(bucket.id, true)
       } else {
         setPinError('Invalid PIN code. Please check and try again.')
+        // Track invalid PIN attempt
+        analyticsService.logPinAttempt(pin, 'invalid_pin')
         // Reset reCAPTCHA if it was used
         if (showCaptcha && recaptchaRef.current) {
           recaptchaRef.current.reset()
@@ -139,18 +148,23 @@ function HeroSection() {
       if (error.message === 'RECAPTCHA_REQUIRED') {
         setShowCaptcha(true)
         setPinError('Please verify that you are human before continuing')
+        // Track reCAPTCHA trigger
+        analyticsService.logPinAttempt(pin, 'recaptcha_required')
       } else if (error.message.includes('timeout-or-duplicate')) {
         setPinError('reCAPTCHA verification expired. Please verify again.')
+        analyticsService.logPinAttempt(pin, 'recaptcha_expired')
         if (recaptchaRef.current) {
           recaptchaRef.current.reset()
         }
       } else if (error.message.includes('Invalid reCAPTCHA')) {
         setPinError('Invalid verification. Please try again.')
+        analyticsService.logPinAttempt(pin, 'recaptcha_invalid')
         if (recaptchaRef.current) {
           recaptchaRef.current.reset()
         }
       } else {
         setPinError('Error accessing bucket. Please try again.')
+        analyticsService.logPinAttempt(pin, 'error')
       }
     } finally {
       setIsLoading(false)

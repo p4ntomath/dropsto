@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import { authService } from '../services/auth.service.js'
+import { analyticsService } from '../services/analytics.service.js'
 
 export default function AuthPage() {
   const [error, setError] = useState(null)
@@ -12,7 +13,8 @@ export default function AuthPage() {
     try {
       setLoading(true)
       setError(null)
-      await authService.signInWithGoogle()
+      const user = await authService.signInWithGoogle()
+      analyticsService.logUserSignIn('google', user.uid)
       navigate('/home')
     } catch (error) {
       setError(error.message)

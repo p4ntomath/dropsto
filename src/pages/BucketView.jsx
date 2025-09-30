@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { bucketService } from '../services/bucket.service'
 import { fileService } from '../services/file.service'
+import { analyticsService } from '../services/analytics.service'
 import FilePreviewModal from '../components/FilePreviewModal'
 import { 
   getDaysUntilExpiration, 
@@ -130,11 +131,16 @@ function BucketView() {
         setFiles(prev => [...uploadedFileModels, ...prev])
         setShowUploadModal(false)
         
+        // Calculate total size for analytics
+        const totalSize = Array.from(uploadedFiles).reduce((total, file) => total + file.size, 0)
+        
+        // Track upload in analytics
+        analyticsService.logFileUpload(bucketId, uploadedFileModels.length, totalSize)
+        
         // Refresh bucket data to get updated storage info
         await refreshBucketData()
         
         // Show success notification
-        const totalSize = Array.from(uploadedFiles).reduce((total, file) => total + file.size, 0)
         const uploadedSizeMB = (totalSize / (1024 * 1024)).toFixed(1)
         
         showNotification(
@@ -253,6 +259,9 @@ function BucketView() {
     try {
       const downloadURL = await fileService.downloadFile(file.id)
       
+      // Track download in analytics
+      analyticsService.logFileDownload(bucketId, file.id, file.size)
+      
       // Create download link
       const link = document.createElement('a')
       link.href = downloadURL
@@ -295,6 +304,9 @@ function BucketView() {
 
     try {
       setDeletingBucket(true)
+      
+      // Track bucket deletion in analytics before deleting
+      analyticsService.logBucketDelete(bucketId, files.length, bucket.storageUsed)
       
       // Delete all files in the bucket first
       await fileService.deleteAllBucketFiles(bucketId, true)
@@ -356,6 +368,10 @@ function BucketView() {
     try {
       setCopyingPin(true)
       await navigator.clipboard.writeText(bucketPin)
+      
+      // Track PIN access in analytics
+      analyticsService.logPinAccess(bucketId)
+      
       showTooltip(e.pageX, e.pageY, 'PIN copied!')
     } catch (err) {
       Logger.error('Failed to copy PIN:', err)
