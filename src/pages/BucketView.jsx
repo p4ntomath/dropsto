@@ -667,7 +667,7 @@ function BucketView() {
                           <p className="text-xs text-gray-500">{file.getFormattedSize()}</p>
                           <p className="text-xs text-gray-400">{formatDate(file.uploadedAt)}</p>
                         </div>
-                        <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center space-x-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
