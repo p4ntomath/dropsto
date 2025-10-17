@@ -24,6 +24,7 @@ import { COLLECTIONS, STORAGE_LIMITS } from '../utils/constants.js'
 import { calculateTotalStorage } from '../utils/helpers.js'
 import { bucketService } from './bucket.service.js'
 import Logger from '../utils/logger.js'
+import JSZip from 'jszip'
 
 /**
  * File Service - Handles all file-related operations
@@ -535,6 +536,114 @@ export class FileService {
 
     this.listeners.push(unsubscribe)
     return unsubscribe
+  }
+
+  /**
+   * Download all files in a bucket as ZIP
+   * @param {string} bucketId - Bucket ID
+   * @param {string} bucketName - Bucket name for ZIP filename
+   * @param {function} onProgress - Progress callback function
+   * @returns {Promise<void>}
+   */
+  async downloadBucketAsZip(bucketId, bucketName, onProgress) {
+    try {
+      // Get all files in the bucket
+      const files = await this.getBucketFiles(bucketId)
+      
+      if (files.length === 0) {
+        throw new Error('No files found in bucket')
+      }
+
+      const zip = new JSZip()
+      let completedFiles = 0
+      const totalFiles = files.length
+
+      // Function to update progress
+      const updateProgress = () => {
+        completedFiles++
+        if (onProgress) {
+          onProgress(completedFiles, totalFiles)
+        }
+      }
+
+      // Download and add files to ZIP concurrently (but limit concurrency)
+      const maxConcurrency = 5 // Limit to prevent overwhelming the browser
+      const downloadPromises = []
+      
+      for (let i = 0; i < files.length; i += maxConcurrency) {
+        const batch = files.slice(i, i + maxConcurrency)
+        const batchPromises = batch.map(async (file) => {
+          try {
+            // Fetch file from Firebase Storage
+            const response = await fetch(file.downloadURL)
+            if (!response.ok) {
+              throw new Error(`Failed to download ${file.name}`)
+            }
+            
+            const blob = await response.blob()
+            
+            // Handle duplicate filenames by adding a counter
+            let fileName = file.name
+            let counter = 1
+            while (zip.files[fileName]) {
+              const nameParts = file.name.split('.')
+              if (nameParts.length > 1) {
+                const extension = nameParts.pop()
+                const baseName = nameParts.join('.')
+                fileName = `${baseName}_${counter}.${extension}`
+              } else {
+                fileName = `${file.name}_${counter}`
+              }
+              counter++
+            }
+            
+            // Add file to ZIP
+            zip.file(fileName, blob)
+            updateProgress()
+            
+            Logger.info(`Added ${fileName} to ZIP`)
+          } catch (error) {
+            Logger.error(`Failed to add ${file.name} to ZIP:`, error)
+            updateProgress() // Still update progress even if file failed
+          }
+        })
+        
+        downloadPromises.push(...batchPromises)
+        
+        // Wait for current batch to complete before starting next batch
+        await Promise.allSettled(batchPromises)
+      }
+
+      // Generate ZIP file
+      Logger.info('Generating ZIP file...')
+      const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: {
+          level: 6 // Balanced compression
+        }
+      })
+
+      // Create download link
+      const url = URL.createObjectURL(zipBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${bucketName.replace(/[^a-zA-Z0-9.-]/g, '_')}_files.zip`
+      link.style.display = 'none'
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Clean up
+      URL.revokeObjectURL(url)
+      
+      Logger.info(`Successfully downloaded ${files.length} files as ZIP`)
+      
+    } catch (error) {
+      Logger.error('Error downloading bucket as ZIP:', error)
+      throw new Error(`Failed to download files as ZIP: ${error.message}`)
+    }
   }
 
   /**

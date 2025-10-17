@@ -48,6 +48,8 @@ function BucketView() {
   const [showDeleteBucketModal, setShowDeleteBucketModal] = useState(false)
   const [deletingBucket, setDeletingBucket] = useState(false)
   const [previewFile, setPreviewFile] = useState(null)
+  const [downloadingZip, setDownloadingZip] = useState(false)
+  const [zipProgress, setZipProgress] = useState({ current: 0, total: 0 })
 
   // Load bucket and files on component mount
   useEffect(() => {
@@ -401,6 +403,46 @@ function BucketView() {
     }
   }
 
+  // Download all files as ZIP
+  const downloadBucketAsZip = async () => {
+    if (files.length === 0) {
+      showNotification('error', 'No Files', 'No files available to download.', [])
+      return
+    }
+
+    try {
+      setDownloadingZip(true)
+      setZipProgress({ current: 0, total: files.length })
+
+      // Progress callback
+      const onProgress = (current, total) => {
+        setZipProgress({ current, total })
+      }
+
+      // Download as ZIP using the file service
+      await fileService.downloadBucketAsZip(bucketId, bucket.name, onProgress)
+
+      showNotification(
+        'success',
+        'ZIP Download Complete',
+        `Successfully downloaded ${files.length} files as "${bucket.name}_files.zip".`,
+        [`Total files: ${files.length}`, `Total size: ${bucket.getFormattedSize ? bucket.getFormattedSize() : '0 Bytes'}`]
+      )
+
+    } catch (error) {
+      Logger.error('ZIP download error:', error)
+      showNotification(
+        'error',
+        'ZIP Download Failed',
+        error.message || 'Failed to download files as ZIP. Please try again.',
+        []
+      )
+    } finally {
+      setDownloadingZip(false)
+      setZipProgress({ current: 0, total: 0 })
+    }
+  }
+
   // Handle drag and drop
   const handleDrag = (e) => {
     e.preventDefault()
@@ -627,6 +669,31 @@ function BucketView() {
                   </div>
                 </div>
               )}
+              {/* Download ZIP Button - Show if there are files */}
+              {files.length > 0 && (
+                <button
+                  onClick={downloadBucketAsZip}
+                  disabled={downloadingZip}
+                  className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  title="Download all files as ZIP"
+                >
+                  {downloadingZip ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>{zipProgress.total > 0 ? `${zipProgress.current}/${zipProgress.total}` : 'Preparing...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span className="hidden sm:inline">Download ZIP</span>
+                      <span className="sm:hidden">ZIP</span>
+                    </>
+                  )}
+                </button>
+              )}
+
               {/* Delete Bucket Button - Only show if user owns the bucket */}
               {bucket && bucket.isOwned && (
                 <button

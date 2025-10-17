@@ -14,6 +14,8 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
   const [downloadingFiles, setDownloadingFiles] = useState(new Set())
   const [previewFile, setPreviewFile] = useState(null)
   const [viewMode, setViewMode] = useState('grid')
+  const [downloadingZip, setDownloadingZip] = useState(false)
+  const [zipProgress, setZipProgress] = useState({ current: 0, total: 0 })
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -130,6 +132,35 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
     }
   }
 
+  // Download all files as ZIP for PIN users
+  const downloadBucketAsZip = async () => {
+    if (files.length === 0) {
+      setError('No files available to download.')
+      return
+    }
+
+    try {
+      setDownloadingZip(true)
+      setZipProgress({ current: 0, total: files.length })
+      setError('')
+
+      // Progress callback
+      const onProgress = (current, total) => {
+        setZipProgress({ current, total })
+      }
+
+      // Download as ZIP using the file service
+      await fileService.downloadBucketAsZip(bucket.id, bucket.name, onProgress)
+
+    } catch (error) {
+      Logger.error('ZIP download error:', error)
+      setError(error.message || 'Failed to download files as ZIP. Please try again.')
+    } finally {
+      setDownloadingZip(false)
+      setZipProgress({ current: 0, total: 0 })
+    }
+  }
+
   if (!bucket) return null
 
   return (
@@ -157,6 +188,36 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
                 </p>
               </div>
               <div className="flex items-center space-x-3 sm:space-x-4">
+                {/* Download ZIP Button - Show if there are files */}
+                {files.length > 0 && (
+                  <button
+                    onClick={downloadBucketAsZip}
+                    disabled={downloadingZip}
+                    className="bg-green-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-1 sm:space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
+                    title="Download all files as ZIP"
+                  >
+                    {downloadingZip ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white"></div>
+                        <span className="hidden sm:inline">
+                          {zipProgress.total > 0 ? `${zipProgress.current}/${zipProgress.total}` : 'Preparing...'}
+                        </span>
+                        <span className="sm:hidden">
+                          {zipProgress.total > 0 ? `${zipProgress.current}/${zipProgress.total}` : '...'}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="hidden sm:inline">Download ZIP</span>
+                        <span className="sm:hidden">ZIP</span>
+                      </>
+                    )}
+                  </button>
+                )}
+                
                 {/* View Toggle */}
                 <div className="flex items-center bg-gray-100 rounded-lg p-1">
                   <button
@@ -251,7 +312,7 @@ export default function BucketFilesModal({ bucket, isOpen, onClose }) {
               </div>
             ) : files.length > 0 ? (
               viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {files.map((file) => (
                     <motion.div
                       key={file.id}
