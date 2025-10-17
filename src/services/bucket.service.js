@@ -423,6 +423,34 @@ export class BucketService {
   }
 
   /**
+   * Clear all files from a bucket (keep bucket active)
+   * @param {string} bucketId - Bucket ID
+   * @returns {Promise<void>}
+   */
+  async clearBucketFiles(bucketId) {
+    try {
+      Logger.info(`Clearing all files from bucket: ${bucketId}`);
+      
+      // Import fileService to delete bucket files
+      const { fileService } = await import('./file.service.js')
+      
+      // Delete all files in the bucket (permanent deletion)
+      await fileService.deleteAllBucketFiles(bucketId, true)
+      
+      // Update bucket stats to reflect cleared files
+      await this.updateBucket(bucketId, {
+        fileCount: 0,
+        storageUsed: 0
+      })
+      
+      Logger.info(`Successfully cleared all files from bucket: ${bucketId}`);
+    } catch (error) {
+      Logger.error(`Error clearing files from bucket ${bucketId}:`, error);
+      throw new Error('Failed to clear bucket files. Please try again.')
+    }
+  }
+
+  /**
    * Listen to bucket changes
    * @param {string} bucketId - Bucket ID to listen to
    * @param {function} callback - Callback function

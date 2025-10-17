@@ -340,6 +340,49 @@ function BucketView() {
     }
   }
 
+  // Clear all files from bucket (keep bucket)
+  const clearBucketFiles = async () => {
+    if (!bucket || !bucket.isOwned) {
+      showNotification('error', 'Permission Denied', 'You can only clear files from buckets you own.', [])
+      return
+    }
+
+    try {
+      setDeletingBucket(true)
+      
+      // Track file clearing in analytics
+      analyticsService.logBucketDelete(bucketId, files.length, bucket.storageUsed)
+      
+      // Clear all files from the bucket using the bucket service
+      await bucketService.clearBucketFiles(bucketId)
+      
+      // Update local state
+      setFiles([])
+      
+      // Refresh bucket data to get updated storage info
+      await refreshBucketData()
+      
+      showNotification(
+        'success',
+        'Files Cleared',
+        `All files have been permanently removed from "${bucket.name}". The bucket is still available for new uploads.`,
+        [`Cleared ${files.length} file${files.length !== 1 ? 's' : ''}`]
+      )
+      
+    } catch (error) {
+      Logger.error('Clear files error:', error)
+      showNotification(
+        'error',
+        'Clear Failed',
+        error.message || 'Failed to clear files. Please try again.',
+        []
+      )
+    } finally {
+      setDeletingBucket(false)
+      setShowDeleteBucketModal(false)
+    }
+  }
+
   // Handle drag and drop
   const handleDrag = (e) => {
     e.preventDefault()
@@ -1066,6 +1109,26 @@ function BucketView() {
                 className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Cancel
+              </button>
+              <button
+                onClick={clearBucketFiles}
+                disabled={deletingBucket || files.length === 0}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                title={files.length === 0 ? "No files to clear" : "Clear all files but keep bucket"}
+              >
+                {deletingBucket ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Clearing...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Clear Files</span>
+                  </>
+                )}
               </button>
               <button
                 onClick={deleteBucket}
