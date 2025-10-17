@@ -48,6 +48,8 @@ function BucketView() {
   const [showDeleteBucketModal, setShowDeleteBucketModal] = useState(false)
   const [deletingBucket, setDeletingBucket] = useState(false)
   const [previewFile, setPreviewFile] = useState(null)
+  const [downloadingZip, setDownloadingZip] = useState(false)
+  const [zipProgress, setZipProgress] = useState({ current: 0, total: 0 })
 
   // Load bucket and files on component mount
   useEffect(() => {
@@ -143,13 +145,31 @@ function BucketView() {
         // Show success notification
         const uploadedSizeMB = (totalSize / (1024 * 1024)).toFixed(1)
         
+        // Limit the number of file names shown and truncate long names
+        const maxFilesToShow = 5
+        const maxFileNameLength = 30
+        const fileNames = uploadedFileModels.map(f => 
+          f.name.length > maxFileNameLength 
+            ? f.name.substring(0, maxFileNameLength) + '...' 
+            : f.name
+        )
+        
+        let filesDisplay = ''
+        if (fileNames.length <= maxFilesToShow) {
+          filesDisplay = fileNames.join(', ')
+        } else {
+          const visibleFiles = fileNames.slice(0, maxFilesToShow)
+          const remainingCount = fileNames.length - maxFilesToShow
+          filesDisplay = `${visibleFiles.join(', ')} and ${remainingCount} more file${remainingCount > 1 ? 's' : ''}`
+        }
+        
         showNotification(
           'success',
           'Upload Successful!',
           `Successfully uploaded ${uploadedFileModels.length} file${uploadedFileModels.length > 1 ? 's' : ''}.`,
           [
             `Added: ${uploadedSizeMB}MB`,
-            `Files uploaded: ${uploadedFileModels.map(f => f.name).join(', ')}`
+            `Files: ${filesDisplay}`
           ]
         )
       } else {
@@ -337,6 +357,89 @@ function BucketView() {
     } finally {
       setDeletingBucket(false)
       setShowDeleteBucketModal(false)
+    }
+  }
+
+  // Clear all files from bucket (keep bucket)
+  const clearBucketFiles = async () => {
+    if (!bucket || !bucket.isOwned) {
+      showNotification('error', 'Permission Denied', 'You can only clear files from buckets you own.', [])
+      return
+    }
+
+    try {
+      setDeletingBucket(true)
+      
+      // Track file clearing in analytics
+      analyticsService.logBucketDelete(bucketId, files.length, bucket.storageUsed)
+      
+      // Clear all files from the bucket using the bucket service
+      await bucketService.clearBucketFiles(bucketId)
+      
+      // Update local state
+      setFiles([])
+      
+      // Refresh bucket data to get updated storage info
+      await refreshBucketData()
+      
+      showNotification(
+        'success',
+        'Files Cleared',
+        `All files have been permanently removed from "${bucket.name}". The bucket is still available for new uploads.`,
+        [`Cleared ${files.length} file${files.length !== 1 ? 's' : ''}`]
+      )
+      
+    } catch (error) {
+      Logger.error('Clear files error:', error)
+      showNotification(
+        'error',
+        'Clear Failed',
+        error.message || 'Failed to clear files. Please try again.',
+        []
+      )
+    } finally {
+      setDeletingBucket(false)
+      setShowDeleteBucketModal(false)
+    }
+  }
+
+  // Download all files as ZIP
+  const downloadBucketAsZip = async () => {
+    if (files.length === 0) {
+      showNotification('error', 'No Files', 'No files available to download.', [])
+      return
+    }
+
+    try {
+      setDownloadingZip(true)
+      setZipProgress({ current: 0, total: files.length })
+
+      // Progress callback
+      const onProgress = (current, total) => {
+        setZipProgress({ current, total })
+      }
+
+      // Download as ZIP using the file service
+      await fileService.downloadBucketAsZip(bucketId, bucket.name, onProgress)
+
+      showNotification(
+        'success',
+        'ZIP Download Complete',
+        `Successfully downloaded ${files.length} files as "${bucket.name}_files.zip".`,
+        [`Total files: ${files.length}`, `Total size: ${bucket.getFormattedSize ? bucket.getFormattedSize() : '0 Bytes'}`]
+      )
+
+    } catch (error) {
+      Logger.error('ZIP download error:', error)
+      showNotification(
+        'error',
+        'ZIP Download Failed',
+        error.message || 'Failed to download files as ZIP. Please try again.',
+        []
+      )
+    } finally {
+      setDownloadingZip(false)
+      setZipProgress({ current: 0, total: 0 })
     }
   }
 
@@ -566,6 +669,31 @@ function BucketView() {
                   </div>
                 </div>
               )}
+              {/* Download ZIP Button - Show if there are files */}
+              {files.length > 0 && (
+                <button
+                  onClick={downloadBucketAsZip}
+                  disabled={downloadingZip}
+                  className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  title="Download all files as ZIP"
+                >
+                  {downloadingZip ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>{zipProgress.total > 0 ? `${zipProgress.current}/${zipProgress.total}` : 'Preparing...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span className="hidden sm:inline">Download ZIP</span>
+                      <span className="sm:hidden">ZIP</span>
+                    </>
+                  )}
+                </button>
+              )}
+
               {/* Delete Bucket Button - Only show if user owns the bucket */}
               {bucket && bucket.isOwned && (
                 <button
@@ -1066,6 +1194,26 @@ function BucketView() {
                 className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Cancel
+              </button>
+              <button
+                onClick={clearBucketFiles}
+                disabled={deletingBucket || files.length === 0}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                title={files.length === 0 ? "No files to clear" : "Clear all files but keep bucket"}
+              >
+                {deletingBucket ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Clearing...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Clear Files</span>
+                  </>
+                )}
               </button>
               <button
                 onClick={deleteBucket}

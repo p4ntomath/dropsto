@@ -29,6 +29,7 @@
     "crypto-js": "^4.2.0",
     "firebase": "^12.1.0",
     "framer-motion": "^12.23.12",
+    "jszip": "^3.10.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-google-recaptcha": "^3.1.0",
