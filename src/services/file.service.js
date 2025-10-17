@@ -49,21 +49,48 @@ export class FileService {
         throw new Error(validation.error)
       }
 
-      const uploadedFiles = []
       const fileArray = Array.from(files)
+      
+      // Create upload promises for all files - this enables concurrent uploads
+      const uploadPromises = fileArray.map(file => 
+        this.uploadSingleFile(file, bucketId, userId)
+          .catch(error => {
+            Logger.error(`Error uploading ${file.name}:`, error)
+            return { error: error.message, fileName: file.name }
+          })
+      )
 
-      for (const file of fileArray) {
-        try {
-          const uploadedFile = await this.uploadSingleFile(file, bucketId, userId)
-          uploadedFiles.push(uploadedFile)
-        } catch (error) {
-          Logger.error(`Error uploading ${file.name}:`, error)
-          // Continue with other files even if one fails
+      // Execute all uploads concurrently
+      const results = await Promise.allSettled(uploadPromises)
+      
+      // Process results and separate successful uploads from errors
+      const uploadedFiles = []
+      const errors = []
+      
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          const uploadResult = result.value
+          if (uploadResult.error) {
+            // Handle errors caught in the individual upload promise
+            errors.push(`${uploadResult.fileName}: ${uploadResult.error}`)
+          } else {
+            // Successful upload
+            uploadedFiles.push(uploadResult)
+          }
+        } else {
+          // Promise was rejected
+          errors.push(`${fileArray[index].name}: ${result.reason?.message || 'Upload failed'}`)
         }
-      }
+      })
 
       // Update bucket file count and storage
       await this.updateBucketStats(bucketId)
+
+      // Log summary
+      Logger.info(`Upload completed: ${uploadedFiles.length} successful, ${errors.length} failed`)
+      if (errors.length > 0) {
+        Logger.warn('Upload errors:', errors)
+      }
 
       return uploadedFiles
     } catch (error) {
