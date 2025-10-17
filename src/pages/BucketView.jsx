@@ -143,13 +143,31 @@ function BucketView() {
         // Show success notification
         const uploadedSizeMB = (totalSize / (1024 * 1024)).toFixed(1)
         
+        // Limit the number of file names shown and truncate long names
+        const maxFilesToShow = 5
+        const maxFileNameLength = 30
+        const fileNames = uploadedFileModels.map(f => 
+          f.name.length > maxFileNameLength 
+            ? f.name.substring(0, maxFileNameLength) + '...' 
+            : f.name
+        )
+        
+        let filesDisplay = ''
+        if (fileNames.length <= maxFilesToShow) {
+          filesDisplay = fileNames.join(', ')
+        } else {
+          const visibleFiles = fileNames.slice(0, maxFilesToShow)
+          const remainingCount = fileNames.length - maxFilesToShow
+          filesDisplay = `${visibleFiles.join(', ')} and ${remainingCount} more file${remainingCount > 1 ? 's' : ''}`
+        }
+        
         showNotification(
           'success',
           'Upload Successful!',
           `Successfully uploaded ${uploadedFileModels.length} file${uploadedFileModels.length > 1 ? 's' : ''}.`,
           [
             `Added: ${uploadedSizeMB}MB`,
-            `Files uploaded: ${uploadedFileModels.map(f => f.name).join(', ')}`
+            `Files: ${filesDisplay}`
           ]
         )
       } else {
