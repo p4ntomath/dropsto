@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useBuckets } from '../hooks/useBuckets'
 import { bucketService } from '../services/bucket.service'  // Add this line
 import { analyticsService } from '../services/analytics.service'
-import { BUCKET_COLORS, BUCKET_ICONS } from '../utils/constants'
+import { BUCKET_COLORS, BUCKET_ICONS, STORAGE_LIMITS } from '../utils/constants'
 import { getDaysUntilExpiration, getExpirationStatus, showTooltip } from '../utils/helpers'
 import potIcon from '../assets/potIcon.png'
 import copyIcon from '../assets/copy.svg'
@@ -631,7 +631,7 @@ function Homepage() {
               <div>
                 <h3 className="text-base lg:text-lg font-semibold text-gray-900">Storage Usage</h3>
                 <p className="text-sm text-gray-600">
-                  {totalStorageUsedMB.toFixed(1)} MB used of 250 MB available
+                  {totalStorageUsedMB.toFixed(1)} MB used of {STORAGE_LIMITS.MAX_TOTAL_STORAGE_MB} MB available
                 </p>
                 <p className="text-sm text-gray-600">
                   {totalStorageRemainingMB.toFixed(1)} MB remaining
