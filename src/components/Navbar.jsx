@@ -36,7 +36,7 @@ function Navbar({ isMenuOpen, setIsMenuOpen }) {
               <a href="#features" className="text-white/80 text-md hover:text-white transition-colors">How To Use</a>
               <button 
                 onClick={handleSignInClick}
-                className="bg-white/20 text-white text-md px-4 py-1 rounded-lg hover:bg-white/30 transition-colors"
+                className="bg-purple-500/30 text-white text-md px-4 py-1 rounded-lg hover:bg-purple-500/40 transition-colors"
               >
                 {user ? 'Go to Dashboard' : 'Sign In'}
               </button>
@@ -81,7 +81,7 @@ function Navbar({ isMenuOpen, setIsMenuOpen }) {
                   handleSignInClick()
                   setIsMenuOpen(false)
                 }}
-                className="bg-white/20 text-white text-lg px-4 py-2 rounded-lg hover:bg-white/30 transition-colors text-center"
+                className="bg-purple-500/30 text-white text-lg px-4 py-2 rounded-lg hover:bg-purple-500/40 transition-colors text-center"
               >
                 {user ? 'Go to Dashboard' : 'Sign In'}
               </button>

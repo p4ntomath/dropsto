@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
@@ -394,7 +395,7 @@ function Homepage() {
                     }}
                   />
                 ) : null}
-                <div className={`w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md ${user?.photoURL ? 'hidden' : 'flex'}`}>
+                <div className={`w-10 h-10 bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md ${user?.photoURL ? 'hidden' : 'flex'}`}>
                   {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                 </div>
               </div>
@@ -474,7 +475,7 @@ function Homepage() {
                 }}
               />
             ) : null}
-            <div className={`w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md ${user?.photoURL ? 'hidden' : 'flex'}`}>
+            <div className={`w-10 h-10 bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md ${user?.photoURL ? 'hidden' : 'flex'}`}>
               {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             <div className="flex-1 min-w-0">
@@ -534,7 +535,7 @@ function Homepage() {
                       }}
                     />
                   ) : null}
-                  <div className={`w-8 h-8 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md ${user?.photoURL ? 'hidden' : 'flex'}`}>
+                  <div className={`w-8 h-8 bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md ${user?.photoURL ? 'hidden' : 'flex'}`}>
                     {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <span className="font-medium text-gray-900">{user?.displayName || user?.email}</span>
@@ -601,7 +602,7 @@ function Homepage() {
               
               <button 
                 onClick={() => setShowCreateModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 text-sm lg:text-base"
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2 text-sm lg:text-base"
               >
                 <span>Create Bucket</span>
               </button>
@@ -616,7 +617,7 @@ function Homepage() {
                 onClick={() => setActiveTab(tab)}
                 className={`pb-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
                   activeTab === tab
-                    ? 'border-blue-500 text-blue-600'
+                    ? 'border-purple-500 text-purple-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -626,7 +627,7 @@ function Homepage() {
           </div>
 
           {/* Storage Usage Summary */}
-          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 lg:p-6 mb-6 lg:mb-8 border border-blue-200">
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 lg:p-6 mb-6 lg:mb-8 border border-purple-200">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
               <div>
                 <h3 className="text-base lg:text-lg font-semibold text-gray-900">Storage Usage</h3>
@@ -638,12 +639,12 @@ function Homepage() {
                 </p>
               </div>
               <div className="text-left lg:text-right">
-                <div className="text-xl lg:text-2xl font-bold text-blue-600">
+                <div className="text-xl lg:text-2xl font-bold text-purple-600">
                   {storagePercentage}%
                 </div>
                 <div className="w-full lg:w-32 h-2 bg-gray-200 rounded-full mt-1">
                   <div 
-                    className="h-2 bg-blue-500 rounded-full transition-all duration-300"
+                    className="h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-300"
                     style={{ width: `${Math.min(storagePercentage, 100)}%` }}
                   ></div>
                 </div>
@@ -674,7 +675,7 @@ function Homepage() {
               {bucketFilter === 'all' && (
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center space-x-2"
+                  className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center space-x-2"
                 >
                   <span>Create Your First Bucket</span>
                 </button>
@@ -869,7 +870,7 @@ function Homepage() {
               <button
                 onClick={createBucket}
                 disabled={!newBucket.name.trim() || isCreatingBucket}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 {isCreatingBucket ? (
                   <>
@@ -906,7 +907,7 @@ function Homepage() {
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Bucket PIN</label>
                 <div className="flex items-center justify-center">
-                  <code className="text-2xl font-mono font-bold text-blue-600 bg-white px-4 py-2 rounded border border-gray-200">
+                  <code className="text-2xl font-mono font-bold text-purple-600 bg-white px-4 py-2 rounded border border-gray-200">
                     {createdBucketPin}
                   </code>
                   <button
@@ -921,15 +922,15 @@ function Homepage() {
                   </button>
                 </div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4 mb-6">
-                <p className="text-sm text-blue-800">
+              <div className="bg-purple-50 rounded-lg p-4 mb-6 border border-purple-100">
+                <p className="text-sm text-purple-800">
                   <strong className='text-red-600'>Important:</strong> Anyone with this PIN code can access your bucket. Keep it secure and only share with trusted people.
                 </p>
               </div>
 
               <button
                 onClick={() => setShowPinModal(false)}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
               >
                 Got it!
               </button>

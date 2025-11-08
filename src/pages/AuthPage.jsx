@@ -24,7 +24,7 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-cyan-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-pink-900 flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -92,7 +92,7 @@ export default function AuthPage() {
           </p>
           <Link
             to="/"
-            className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
+            className="text-white hover:text-pink-200 text-sm font-medium transition-colors"
           >
             Enter PIN Code
           </Link>

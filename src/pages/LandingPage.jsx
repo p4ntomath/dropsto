@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
 import Navbar from '../components/Navbar'
 import HeroSection from '../components/HeroSection'
 import FeaturesSection from '../components/FeaturesSection'
@@ -17,11 +18,13 @@ function LandingPage() {
           mouseControls: true,
           touchControls: true,
           gyroControls: false,
-          color1: 0x1e3a8a,
+          color1: 0x9333ea, // Purple theme for v6
+          color2: 0xc084fc, // Secondary purple
           minHeight: 200.00,
           minWidth: 200.00,
           scale: 1.00,
-          scaleMobile: 1.00
+          scaleMobile: 1.00,
+          backgroundColor: 0x4c1d95 // Deep purple background
         })
       )
     }
