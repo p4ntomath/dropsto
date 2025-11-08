@@ -12,6 +12,7 @@ import {
   formatDate, 
   showTooltip 
 } from '../utils/helpers'
+import { STORAGE_LIMITS } from '../utils/constants'
 import potIcon from '../assets/potIcon.png'
 import Logger from '../utils/logger.js'
 
@@ -1038,7 +1039,7 @@ function BucketView() {
                 onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               />
               <div className="mt-4 text-xs text-gray-500">
-                <p>Maximum total storage: 250MB per user</p>
+                <p>Maximum total storage: {STORAGE_LIMITS.MAX_TOTAL_STORAGE_MB}MB per user</p>
               </div>
             </div>
           </motion.div>
