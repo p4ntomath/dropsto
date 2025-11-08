@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+/* Custom Purple Theme for v6 - Celebrating Women */
+:root {
+  --color-purple-primary: #9333ea;
+  --color-purple-secondary: #c084fc;
+  --color-purple-light: #e9d5ff;
+  --color-purple-dark: #6b21a8;
+  --color-purple-accent: #d946ef;
+}
+
+/* Custom gradient backgrounds */
+.gradient-purple-primary {
+  background: linear-gradient(135deg, #9333ea 0%, #c084fc 100%);
+}
+
+.gradient-purple-vibrant {
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+}
+
+.gradient-purple-royal {
+  background: linear-gradient(135deg, #7e22ce 0%, #a855f7 50%, #ec4899 100%);
+}

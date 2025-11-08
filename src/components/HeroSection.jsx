@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import ReCAPTCHA from 'react-google-recaptcha'
@@ -206,7 +207,7 @@ function HeroSection() {
               variants={fadeInUp}
             >
               Store. Share.
-              <span className="block bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+              <span className="block bg-gradient-to-r from-purple-400 via-pink-400 to-purple-500 bg-clip-text text-transparent">
                 Simplify.
               </span>
             </motion.h1>
@@ -226,8 +227,8 @@ function HeroSection() {
                 <div className="space-y-6">
                   {/* Header */}
                   <div className="text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 bg-cyan-500/20 rounded-full mb-4">
-                      <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-500/20 rounded-full mb-4">
+                      <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-3.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                       </svg>
                     </div>
@@ -248,7 +249,7 @@ function HeroSection() {
                         placeholder="drop-xxXX"
                         className={`w-full bg-white/10 border-2 rounded-lg px-4 py-4 text-white placeholder-white/40 focus:outline-none text-center text-xl font-mono tracking-wider transition-all duration-300 ${
                           isInputFocused 
-                            ? 'border-cyan-400 ring-4 ring-cyan-400/20 bg-white/15' 
+                            ? 'border-purple-400 ring-4 ring-purple-400/20 bg-white/15' 
                             : pinError 
                               ? 'border-red-400 bg-red-500/10' 
                               : 'border-white/30 hover:border-white/50'
@@ -319,7 +320,7 @@ function HeroSection() {
                   <button
                     onClick={handleRetrieveFiles}
                     disabled={!pin.trim() || (pin.length !== PIN_LENGTH.NEW && pin.length !== PIN_LENGTH.LEGACY) || isLoading}
-                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white py-4 rounded-lg text-lg font-semibold hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg hover:shadow-xl"
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-lg text-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg hover:shadow-xl"
                   >
                     {isLoading ? (
                       <div className="flex items-center justify-center space-x-2">
@@ -359,7 +360,7 @@ function HeroSection() {
             >
               <motion.button 
                 onClick={handleGetStarted}
-                className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-2 rounded-xl text-base font-semibold hover:from-cyan-600 hover:to-blue-600 transform hover:scale-105 transition-all duration-200 shadow-2xl"
+                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-xl text-base font-semibold hover:from-purple-600 hover:to-pink-600 transform hover:scale-105 transition-all duration-200 shadow-2xl"
                 variants={fadeInLeft}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -368,7 +369,7 @@ function HeroSection() {
               </motion.button>
               <motion.button 
                 onClick={handleWatchDemo}
-                className="border-2 border-white/30 text-white px-4 py-2 rounded-xl text-base font-semibold hover:bg-white/10 transition-colors"
+                className="border-2 border-purple-300/50 text-white px-4 py-2 rounded-xl text-base font-semibold hover:bg-purple-500/20 transition-colors"
                 variants={fadeInRight}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -380,7 +381,7 @@ function HeroSection() {
           
           {/* Floating Elements with animations */}
           <motion.div 
-            className="absolute top-20 left-10 w-20 h-20 bg-cyan-400/20 rounded-full"
+            className="absolute top-20 left-10 w-20 h-20 bg-purple-400/20 rounded-full"
             animate={{ 
               y: [0, -20, 0],
               opacity: [0.2, 0.5, 0.2]
@@ -392,7 +393,7 @@ function HeroSection() {
             }}
           ></motion.div>
           <motion.div 
-            className="absolute top-40 right-10 w-32 h-32 bg-blue-400/20 rounded-full"
+            className="absolute top-40 right-10 w-32 h-32 bg-pink-400/20 rounded-full"
             animate={{ 
               y: [0, 30, 0],
               opacity: [0.3, 0.6, 0.3]
@@ -405,7 +406,7 @@ function HeroSection() {
             }}
           ></motion.div>
           <motion.div 
-            className="absolute bottom-20 left-1/4 w-16 h-16 bg-white/10 rounded-full"
+            className="absolute bottom-20 left-1/4 w-16 h-16 bg-purple-300/15 rounded-full"
             animate={{ 
               y: [0, -15, 0],
               opacity: [0.1, 0.4, 0.1]

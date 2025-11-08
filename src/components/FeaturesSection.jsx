@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion'
 
 function FeaturesSection() {
@@ -98,7 +99,7 @@ function FeaturesSection() {
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              <div className="text-cyan-400 mb-4 flex justify-center">
+              <div className="text-purple-400 mb-4 flex justify-center">
                 {step.icon}
               </div>
               <h3 className="text-lg font-semibold text-white mb-3">{step.title}</h3>

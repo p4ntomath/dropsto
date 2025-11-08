@@ -12,6 +12,7 @@ import {
   formatDate, 
   showTooltip 
 } from '../utils/helpers'
+import { STORAGE_LIMITS } from '../utils/constants'
 import potIcon from '../assets/potIcon.png'
 import Logger from '../utils/logger.js'
 
@@ -655,8 +656,8 @@ function BucketView() {
                     <label className="text-sm text-gray-600">External Uploads</label>
                     <button
                       onClick={togglePinUploads}
-                      className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                        allowPinUploads ? 'bg-blue-600' : 'bg-gray-200'
+                      className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 ${
+                        allowPinUploads ? 'bg-purple-600' : 'bg-gray-200'
                       }`}
                     >
                       <span className="sr-only">Toggle PIN uploads</span>
@@ -713,7 +714,7 @@ function BucketView() {
               <button
                 onClick={() => setShowUploadModal(true)}
                 disabled={uploading}
-                className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                className="bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 {uploading ? (
                   <>
@@ -760,14 +761,14 @@ function BucketView() {
                 <button
                   onClick={handleCopyPin}
                   disabled={copyingPin}
-                  className="text-base lg:text-lg font-mono font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded border border-blue-200 transition-colors flex items-center space-x-2"
+                  className="text-base lg:text-lg font-mono font-bold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1 rounded border border-purple-200 transition-colors flex items-center space-x-2"
                   title="Click to copy PIN"
                 >
                   <span>{bucketPin}</span>
                   {copyingPin ? (
-                    <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 border-2 border-purple-600/30 border-t-purple-600 rounded-full animate-spin"></div>
                   ) : (
-                    <svg className="w-4 h-4 text-blue-600/50 group-hover:text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <svg className="w-4 h-4 text-purple-600/50 group-hover:text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
                     </svg>
                   )}
@@ -796,7 +797,7 @@ function BucketView() {
             <button
               onClick={() => setShowUploadModal(true)}
               disabled={uploading}
-              className="bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
+              className="bg-purple-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
             >
               {uploading ? 'Uploading...' : 'Upload Files'}
             </button>
@@ -1026,7 +1027,7 @@ function BucketView() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {uploading ? 'Uploading...' : 'Browse Files'}
               </button>
@@ -1038,7 +1039,7 @@ function BucketView() {
                 onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               />
               <div className="mt-4 text-xs text-gray-500">
-                <p>Maximum total storage: 500MB per user</p>
+                <p>Maximum total storage: {STORAGE_LIMITS.MAX_TOTAL_STORAGE_MB}MB per user</p>
               </div>
             </div>
           </motion.div>
@@ -1087,7 +1088,7 @@ function BucketView() {
               <button
                 onClick={renameFile}
                 disabled={!newFileName.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Rename
               </button>
@@ -1129,7 +1130,7 @@ function BucketView() {
             <div className="flex justify-end space-x-3 mt-6">
               <button
                 onClick={() => setShowNotificationModal(false)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
               >
                 Close
               </button>
