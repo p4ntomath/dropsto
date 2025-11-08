@@ -1038,7 +1038,7 @@ function BucketView() {
                 onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               />
               <div className="mt-4 text-xs text-gray-500">
-                <p>Maximum total storage: 500MB per user</p>
+                <p>Maximum total storage: 250MB per user</p>
               </div>
             </div>
           </motion.div>
